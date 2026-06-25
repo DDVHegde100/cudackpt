@@ -2,17 +2,47 @@
 
 package health
 
-import "syscall"
+import (
+	"os"
+	"strconv"
+	"strings"
+)
+
+const capSysAdmin = 1 << 21
 
 func probeCaps() Check {
-	hdr := syscall.CapUserHeader{Version: syscall.LINUX_CAPABILITY_VERSION_3}
-	var data [2]syscall.CapUserData
-	if err := syscall.Capget(&hdr, &data[0]); err != nil {
+	b, err := os.ReadFile("/proc/self/status")
+	if err != nil {
 		return Check{Name: "caps", OK: false, Detail: err.Error()}
 	}
-	eff := uint64(data[0].Effective) | uint64(data[1].Effective)<<32
-	if eff&(1<<syscall.CAP_SYS_ADMIN) != 0 {
-		return Check{Name: "caps", OK: true, Detail: "CAP_SYS_ADMIN"}
+	for _, line := range strings.Split(string(b), "\n") {
+		if !strings.HasPrefix(line, "CapEff:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			break
+		}
+		mask, err := parseCapMask(fields[1:])
+		if err != nil {
+			return Check{Name: "caps", OK: false, Detail: err.Error()}
+		}
+		if mask&capSysAdmin != 0 {
+			return Check{Name: "caps", OK: true, Detail: "CAP_SYS_ADMIN"}
+		}
+		return Check{Name: "caps", OK: false, Detail: "missing CAP_SYS_ADMIN for criu"}
 	}
-	return Check{Name: "caps", OK: false, Detail: "missing CAP_SYS_ADMIN for criu"}
+	return Check{Name: "caps", OK: false, Detail: "CapEff missing"}
+}
+
+func parseCapMask(fields []string) (uint64, error) {
+	var mask uint64
+	for i, f := range fields {
+		v, err := strconv.ParseUint(f, 16, 64)
+		if err != nil {
+			return 0, err
+		}
+		mask |= v << (32 * i)
+	}
+	return mask, nil
 }

@@ -1,7 +1,9 @@
 FROM nvidia/cuda:12.6.0-devel-ubuntu22.04 AS builder
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  cmake build-essential golang-go ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
+  cmake build-essential ca-certificates curl \
+  && rm -rf /var/lib/apt/lists/* \
+  && curl -fsSL https://go.dev/dl/go1.22.10.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+ENV PATH=/usr/local/go/bin:${PATH}
 WORKDIR /src
 COPY . .
 RUN make
