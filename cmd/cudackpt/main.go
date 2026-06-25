@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dhruvhegde/cudackpt/pkg/agent"
 	"github.com/dhruvhegde/cudackpt/pkg/bench"
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/control"
@@ -137,7 +138,7 @@ func main() {
 			fmt.Println(p)
 		}
 		metrics.Default.Add(metrics.GCRemovedTotal, uint64(len(removed)))
-		refreshMetricsGauges(cfg)
+		agent.RefreshGauges(cfg)
 		if dryRun {
 			fmt.Fprintf(os.Stderr, "gc dry-run: would remove %d paths\n", len(removed))
 		} else {
@@ -336,9 +337,28 @@ func main() {
 				die(fmt.Errorf("metrics: unknown flag %q", os.Args[i]))
 			}
 		}
-		refreshMetricsGauges(cfg)
+		agent.RefreshGauges(cfg)
 		fmt.Fprintf(os.Stderr, "metrics listening on %s/metrics\n", addr)
 		if err := metrics.Serve(addr, metrics.Default); err != nil {
+			die(err)
+		}
+	case "agent":
+		opts := agent.OptionsFromConfig(cfg)
+		for i := 2; i < len(os.Args); i++ {
+			switch os.Args[i] {
+			case "--listen":
+				if i+1 >= len(os.Args) {
+					die(fmt.Errorf("agent: missing value for --listen"))
+				}
+				opts.Listen = os.Args[i+1]
+				i++
+			default:
+				die(fmt.Errorf("agent: unknown flag %q", os.Args[i]))
+			}
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer cancel()
+		if err := agent.Run(ctx, opts); err != nil {
 			die(err)
 		}
 	default:
@@ -354,6 +374,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "       cudackpt promote <src> <dest> [--pin file]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt gc [--root dir] [--older-than 14d] [--pin file] [--dry-run]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt metrics [--listen addr]\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt agent [--listen addr]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt freeze|ping|resume|status <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt watch <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt bench <pid> [count]\n")
@@ -383,15 +404,4 @@ func parseAge(s string) (time.Duration, error) {
 		return time.Duration(n) * 24 * time.Hour, nil
 	}
 	return time.ParseDuration(s)
-}
-
-func refreshMetricsGauges(cfg config.Config) {
-	imgs, err := control.ListImages(cfg.ImageRoot)
-	if err == nil {
-		metrics.Default.Set(metrics.ImagesGauge, float64(len(imgs)))
-	}
-	shims, err := control.ListShims(cfg.RunDir)
-	if err == nil {
-		metrics.Default.Set(metrics.ShimsGauge, float64(len(shims)))
-	}
 }

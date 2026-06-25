@@ -1,0 +1,20 @@
+[Unit]
+Description=cudackpt control plane agent
+Documentation=man:cudackpt(8)
+After=network.target cudackpt-run.service
+Requires=cudackpt-run.service
+
+[Service]
+Type=simple
+User=cudackpt
+Group=cudackpt
+EnvironmentFile=-/etc/cudackpt.conf
+Environment=CUDACKPT_RUN_DIR=/run/cudackpt
+Environment=CUDACKPT_IMAGE_ROOT=/var/lib/cudackpt
+Environment=CUDACKPT_METRICS_ADDR=127.0.0.1:9090
+ExecStart=/usr/bin/cudackpt agent
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
