@@ -1,6 +1,7 @@
 #include "ckpt_ops.h"
-#include "tracker.hpp"
 #include "log.h"
+#include "quiesce.hpp"
+#include "tracker.hpp"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -26,7 +27,8 @@ enum {
   OP_SNAPSHOT = 4,
   OP_RESTORE = 5,
   OP_RESUME = 6,
-  OP_QUIT = 7
+  OP_QUIT = 7,
+  OP_STATS = 8
 };
 
 enum {
@@ -85,6 +87,21 @@ static void set_state(int s) {
   pthread_mutex_unlock(&g_mu);
 }
 
+static void write_stats(int fd) {
+  TrackerStats st = Tracker::instance().stats_snapshot();
+  write_u32(fd, 0);
+  write_u32(fd, static_cast<uint32_t>(st.alloc_count));
+  write_u32(fd, static_cast<uint32_t>(st.total_bytes & 0xffffffffu));
+  write_u32(fd, static_cast<uint32_t>((st.total_bytes >> 32) & 0xffffffffu));
+  write_u32(fd, static_cast<uint32_t>(st.stream_count));
+  write_u32(fd, static_cast<uint32_t>(st.module_count));
+  write_u32(fd, static_cast<uint32_t>(st.symbol_count));
+  write_u32(fd, static_cast<uint32_t>(st.event_count));
+  write_u32(fd, static_cast<uint32_t>(st.ctx_count));
+  write_u32(fd, st.unsupported_code);
+  write_u32(fd, static_cast<uint32_t>(st.state));
+}
+
 static void handle_client(int cfd) {
   uint32_t op = read_u32(cfd);
   char path[512];
@@ -97,7 +114,14 @@ static void handle_client(int cfd) {
       write_u32(cfd, (uint32_t)g_state);
       pthread_mutex_unlock(&g_mu);
       break;
+    case OP_STATS:
+      write_stats(cfd);
+      break;
     case OP_FREEZE:
+      if (ckpt_quiesce_gpu() != 0) {
+        write_u32(cfd, 1);
+        break;
+      }
       set_state(ST_FROZEN);
       write_u32(cfd, 0);
       break;
@@ -156,6 +180,7 @@ static void* server_thread(void* arg) {
 static void sig_handler(int sig) {
   (void)sig;
   g_sigckpt = 1;
+  ckpt_quiesce_gpu();
   set_state(ST_FROZEN);
 }
 
