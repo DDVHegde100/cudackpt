@@ -131,18 +131,12 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 	}
 	deadline := time.Now().Add(o.cfg.RestoreTimeout)
 	for time.Now().Before(deadline) {
-		var candidates []int
-		if pid > 0 {
-			candidates = append(candidates, pid)
+		pids, lerr := o.sortedShims()
+		if lerr != nil {
+			time.Sleep(o.cfg.ShimPoll)
+			continue
 		}
-		if pids, lerr := o.sortedShims(); lerr == nil {
-			for _, p := range pids {
-				if p != pid {
-					candidates = append(candidates, p)
-				}
-			}
-		}
-		for _, try := range candidates {
+		for _, try := range restoreCandidates(pid, pids) {
 			if got, rerr := o.tryShimRestore(imagePath, try); rerr == nil {
 				jlog.Info("restore_ok", map[string]any{"pid": got, "dir": imagePath})
 				return got, nil
