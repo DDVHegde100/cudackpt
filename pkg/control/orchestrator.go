@@ -16,12 +16,19 @@ import (
 )
 
 type Orchestrator struct {
-	criu *criu.Wrapper
+	criu criu.Backend
 	cfg  config.Config
 }
 
 func New(cfg config.Config) *Orchestrator {
-	return &Orchestrator{criu: criu.New(), cfg: cfg}
+	return NewWithCRIU(cfg, criu.New())
+}
+
+func NewWithCRIU(cfg config.Config, backend criu.Backend) *Orchestrator {
+	if backend == nil {
+		backend = criu.New()
+	}
+	return &Orchestrator{criu: backend, cfg: cfg}
 }
 
 func imageDir(base string, pid int) string {
