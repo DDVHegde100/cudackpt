@@ -1,0 +1,11 @@
+/build/
+*.o
+*.so
+*.a
+*.fatbin
+*.cubin
+*.ptx
+*.exe
+.DS_Store
+*.swp
+*~

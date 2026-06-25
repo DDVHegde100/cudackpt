@@ -1,0 +1,8 @@
+#!/bin/sh
+msg=$(cat "$1")
+for pat in 'Co-authored-by:' 'Generated with Cursor' 'Generated-By: Cursor' 'AI-assisted' 'Co-Authored-By:'; do
+  echo "$msg" | grep -qiF "$pat" && {
+    echo "blocked trailer: $pat" >&2
+    exit 1
+  }
+done

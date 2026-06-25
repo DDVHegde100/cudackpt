@@ -1,0 +1,6 @@
+#!/bin/sh
+file=$1
+[ -f "$file" ] || exit 0
+tmp=$(mktemp)
+grep -viF 'Co-authored-by:' "$file" | grep -viF 'Co-Authored-By:' | grep -viF 'Generated with Cursor' | grep -viF 'Generated-By: Cursor' | grep -viF 'AI-assisted' > "$tmp"
+mv "$tmp" "$file"
