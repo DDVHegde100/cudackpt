@@ -158,6 +158,22 @@ func main() {
 			die(err)
 		}
 		fmt.Print(out)
+	case "stats":
+		if len(os.Args) < 3 {
+			usage()
+			os.Exit(2)
+		}
+		pid, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			die(err)
+		}
+		st, err := orc.Stats(pid)
+		if err != nil {
+			die(err)
+		}
+		fmt.Printf("state=%d allocs=%d bytes=%d streams=%d modules=%d symbols=%d events=%d ctxs=%d unsupported=%d\n",
+			st.State, st.AllocCount, st.TotalBytes, st.StreamCount, st.ModuleCount,
+			st.SymbolCount, st.EventCount, st.CtxCount, st.UnsupportedCode)
 	case "health":
 		st := health.Probe()
 		fmt.Print(health.Format(st))
@@ -181,6 +197,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "       cudackpt inspect <image>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt validate <image>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt report <image>\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt stats <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt health\n")
 }
 

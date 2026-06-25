@@ -40,6 +40,19 @@ func (o *Orchestrator) Status(pid int) (uint32, error) {
 	return st, nil
 }
 
+func (o *Orchestrator) Stats(pid int) (rpc.Stats, error) {
+	cli, err := dial(pid)
+	if err != nil {
+		return rpc.Stats{}, err
+	}
+	defer cli.Close()
+	st, err := cli.Stats()
+	if err != nil {
+		return rpc.Stats{}, ckpterr.Wrap(ckpterr.RPC, "stats", err)
+	}
+	return st, nil
+}
+
 func (o *Orchestrator) Freeze(pid int) error {
 	cli, err := dial(pid)
 	if err != nil {

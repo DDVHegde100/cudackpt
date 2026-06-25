@@ -15,7 +15,20 @@ const (
 	OpRestore   uint32 = 5
 	OpResume    uint32 = 6
 	OpQuit      uint32 = 7
+	OpStats     uint32 = 8
 )
+
+type Stats struct {
+	AllocCount      uint32
+	TotalBytes      uint64
+	StreamCount     uint32
+	ModuleCount     uint32
+	SymbolCount     uint32
+	EventCount      uint32
+	CtxCount        uint32
+	UnsupportedCode uint32
+	State           uint32
+}
 
 type Client struct {
 	conn net.Conn
@@ -132,4 +145,57 @@ func (c *Client) Resume() error {
 		return fmt.Errorf("resume rc=%d", rc)
 	}
 	return nil
+}
+
+func (c *Client) Stats() (Stats, error) {
+	if err := writeU32(c.conn, OpStats); err != nil {
+		return Stats{}, err
+	}
+	rc, err := readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	if rc != 0 {
+		return Stats{}, fmt.Errorf("stats rc=%d", rc)
+	}
+	var s Stats
+	s.AllocCount, err = readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	lo, err := readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	hi, err := readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	s.TotalBytes = uint64(hi)<<32 | uint64(lo)
+	s.StreamCount, err = readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	s.ModuleCount, err = readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	s.SymbolCount, err = readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	s.EventCount, err = readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	s.CtxCount, err = readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	s.UnsupportedCode, err = readU32(c.conn)
+	if err != nil {
+		return Stats{}, err
+	}
+	s.State, err = readU32(c.conn)
+	return s, err
 }
