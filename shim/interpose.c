@@ -152,7 +152,7 @@ struct HostWrap {
   void* data;
 };
 
-static void CKAPI host_wrap(void* arg) {
+static void host_wrap(void* arg) {
   auto* w = static_cast<HostWrap*>(arg);
   w->fn(w->data);
   Tracker::instance().host_callback_leave();

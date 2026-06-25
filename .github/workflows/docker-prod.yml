@@ -12,4 +12,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: docker prod smoke
-        run: ./scripts/docker_prod_smoke.sh
+        run: bash ./scripts/docker_prod_smoke.sh
