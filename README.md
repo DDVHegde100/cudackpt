@@ -1,6 +1,46 @@
 # cudackpt
 
-Single-GPU CUDA process checkpoint and restore for Linux. cudackpt intercepts the CUDA Driver API through an `LD_PRELOAD` shim, snapshots device memory and stream state, coordinates with CRIU for CPU/process state, and restores execution without modifying the target application.
+[![CI](https://github.com/DDVHegde100/cudackpt/actions/workflows/ci.yml/badge.svg)](https://github.com/DDVHegde100/cudackpt/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/DDVHegde100/cudackpt?label=release)](https://github.com/DDVHegde100/cudackpt/releases)
+[![Go](https://img.shields.io/badge/go-1.22+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![CUDA](https://img.shields.io/badge/CUDA-12.x-76B900?logo=nvidia&logoColor=white)](https://developer.nvidia.com/cuda-toolkit)
+
+**Checkpoint and restore single-GPU CUDA processes on Linux** — without modifying your application.
+
+cudackpt intercepts the CUDA Driver API through an `LD_PRELOAD` shim, snapshots device memory and stream state, coordinates with [CRIU](https://criu.org/) for CPU/process state, and restores execution from a versioned on-disk image.
+
+> **Status:** v0.1.0 — early release. Validate on your stack before production use. See [Limitations](#limitations).
+
+## Features
+
+- **Transparent interception** — `LD_PRELOAD` shim; no app source changes
+- **Full-stack checkpoint** — GPU allocations, streams, modules, and process state via CRIU
+- **Versioned images** — manifest with CRC32C, optional compression, sparse pages, dedup, and delta snapshots
+- **Production tooling** — rollback, image retention GC, promote-image, restore event logs, Prometheus metrics
+- **Operator-friendly CLI** — checkpoint, restore, inspect, validate, report, and granular RPC controls
+
+## Quick start
+
+```bash
+git clone https://github.com/DDVHegde100/cudackpt.git
+cd cudackpt
+make
+sudo make install
+```
+
+Run your CUDA app under the shim, then checkpoint from another terminal:
+
+```bash
+export LD_PRELOAD=/usr/lib/libcudackpt.so
+./your_cuda_app
+
+cudackpt ps -v
+cudackpt checkpoint <pid> /var/lib/cudackpt/run-1
+kill <pid>
+cudackpt restore /var/lib/cudackpt/run-1
+```
+
+Install the `.deb` from [Releases](https://github.com/DDVHegde100/cudackpt/releases) on Ubuntu/Debian, or build from source above.
 
 ## Architecture
 
@@ -30,36 +70,39 @@ Checkpoint sequence:
 3. Write manifest, device metadata, and environment into a versioned image directory.
 4. Invoke CRIU to capture process memory, file descriptors, and registers.
 
-Restore reverses the order: CRIU restore, GPU memory remap at original virtual addresses, resume signal to the application.
+Restore reverses the order: CRIU restore → GPU memory remap at original virtual addresses → resume signal to the application.
 
 ## Requirements
 
-- Linux (x86_64)
-- NVIDIA GPU with CUDA 12.x driver
-- CUDA 12.x toolkit (`nvcc`, `cmake`)
-- Go 1.22+
-- CRIU 3.x with `criu check` passing
-- `sudo` for CRIU and `/run/cudackpt` socket directory
+| Component | Version |
+|-----------|---------|
+| OS | Linux x86_64 |
+| NVIDIA driver | CUDA 12.x compatible |
+| CUDA toolkit | 12.x (`nvcc`, `cmake`) |
+| Go | 1.22+ |
+| CRIU | 3.x with `criu check` passing |
+| Privileges | `sudo` for CRIU and `/run/cudackpt` socket directory |
 
-Optional:
-
-- Docker with NVIDIA Container Toolkit for containerized e2e
-- Self-hosted GitHub Actions runner with GPU for CI e2e
+Optional: Docker with NVIDIA Container Toolkit for containerized e2e; self-hosted GitHub Actions runner with GPU for full e2e CI.
 
 ## Installation
 
 ```bash
 git clone https://github.com/DDVHegde100/cudackpt.git
 cd cudackpt
-./scripts/install-hooks.sh
+./scripts/install-hooks.sh   # optional: local commit hooks
 make
 sudo make install DESTDIR=
 ```
 
 Installed artifacts:
 
-- `/usr/lib/libcudackpt.so` — LD_PRELOAD shim
-- `/usr/bin/cudackpt` — control CLI
+| Path | Role |
+|------|------|
+| `/usr/lib/libcudackpt.so` | LD_PRELOAD shim |
+| `/usr/bin/cudackpt` | Control CLI and orchestrator |
+
+Systemd units and agent daemon: `sudo make install-systemd` (see [docs/OPERATIONS.md](docs/OPERATIONS.md)).
 
 ## Usage
 
@@ -92,6 +135,8 @@ cudackpt resume <pid>
 cudackpt status <pid>
 ```
 
+See [docs/CLI.md](docs/CLI.md) for the complete command reference.
+
 ## Testing
 
 ```bash
@@ -122,7 +167,7 @@ Enable shim debug logging:
 export CUDACKPT_DEBUG=1
 ```
 
-## Image Layout
+## Image layout
 
 | File | Purpose |
 |------|---------|
@@ -134,15 +179,17 @@ export CUDACKPT_DEBUG=1
 | `snapshot.err` | Snapshot failure diagnostics |
 | `restore.err` | GPU restore failure diagnostics |
 
+## Documentation
+
+- [CLI reference](docs/CLI.md) — all commands and flags
+- [Operations guide](docs/OPERATIONS.md) — retention, restore, rollback, agent, metrics
+- [Changelog](CHANGELOG.md) — release history
+
 ## Limitations
 
 - Single GPU only; multi-GPU, MIG, NCCL, and CUDA graphs are rejected.
 - GPU restore relies on deterministic reallocation or fixed virtual-address remap; bit-exact resume is workload-dependent.
 - CRIU plus CUDA is experimental; validate on your stack before production use.
-
-See [docs/OPERATIONS.md](docs/OPERATIONS.md) for retention, restore, and rollback procedures.
-
-See [docs/CLI.md](docs/CLI.md) for the complete command reference.
 
 ## License
 
