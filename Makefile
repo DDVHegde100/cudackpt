@@ -4,7 +4,7 @@ SHIM := $(BUILD_DIR)/libcudackpt.so
 VECTORADD := $(BUILD_DIR)/vectoradd
 CUBLAS := $(BUILD_DIR)/cublas_gemm
 
-.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test install-systemd
+.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test install-systemd gc-images
 
 all: shim go vectoradd
 
@@ -73,3 +73,6 @@ validate: go
 
 install-systemd:
 	sudo -E ./scripts/install-systemd.sh
+
+gc-images: go
+	./scripts/gc_images.sh

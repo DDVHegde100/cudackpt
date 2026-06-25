@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/dhruvhegde/cudackpt/pkg/bench"
 	"github.com/dhruvhegde/cudackpt/pkg/config"
@@ -72,6 +74,54 @@ func main() {
 			die(err)
 		}
 		fmt.Printf("rollback ok pid=%d\n", pid)
+	case "gc":
+		root := cfg.ImageRoot
+		maxAge := 14 * 24 * time.Hour
+		pin := os.Getenv("CUDACKPT_PIN_FILE")
+		dryRun := false
+		for i := 2; i < len(os.Args); i++ {
+			switch os.Args[i] {
+			case "--root":
+				if i+1 >= len(os.Args) {
+					die(fmt.Errorf("gc: missing value for --root"))
+				}
+				root = os.Args[i+1]
+				i++
+			case "--older-than":
+				if i+1 >= len(os.Args) {
+					die(fmt.Errorf("gc: missing value for --older-than"))
+				}
+				maxAge, err = parseAge(os.Args[i+1])
+				if err != nil {
+					die(err)
+				}
+				i++
+			case "--pin":
+				if i+1 >= len(os.Args) {
+					die(fmt.Errorf("gc: missing value for --pin"))
+				}
+				pin = os.Args[i+1]
+				i++
+			case "--dry-run":
+				dryRun = true
+			default:
+				die(fmt.Errorf("gc: unknown flag %q", os.Args[i]))
+			}
+		}
+		_, removed, err := control.RunImageGC(control.GCOptions{
+			Root: root, MaxAge: maxAge, PinFile: pin,
+		}, dryRun)
+		if err != nil {
+			die(err)
+		}
+		for _, p := range removed {
+			fmt.Println(p)
+		}
+		if dryRun {
+			fmt.Fprintf(os.Stderr, "gc dry-run: would remove %d paths\n", len(removed))
+		} else {
+			fmt.Fprintf(os.Stderr, "gc removed %d paths\n", len(removed))
+		}
 	case "freeze", "ping", "resume", "status":
 		if len(os.Args) < 3 {
 			usage()
@@ -265,6 +315,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "usage: cudackpt checkpoint <pid> [dir]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt restore <image>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt rollback <image> [--stop <pid>]\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt gc [--root dir] [--older-than 14d] [--pin file] [--dry-run]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt freeze|ping|resume|status <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt watch <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt bench <pid> [count]\n")
@@ -283,4 +334,15 @@ func usage() {
 func die(err error) {
 	fmt.Fprintf(os.Stderr, "cudackpt: %v\n", err)
 	os.Exit(1)
+}
+
+func parseAge(s string) (time.Duration, error) {
+	if strings.HasSuffix(s, "d") {
+		n, err := strconv.Atoi(strings.TrimSuffix(s, "d"))
+		if err != nil {
+			return 0, err
+		}
+		return time.Duration(n) * 24 * time.Hour, nil
+	}
+	return time.ParseDuration(s)
 }
