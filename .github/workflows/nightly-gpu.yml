@@ -1,0 +1,43 @@
+name: nightly-gpu
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      cuda_tag:
+        description: CUDA image tag suffix
+        required: false
+        default: "12.6.0-devel-ubuntu22.04"
+
+jobs:
+  matrix-e2e:
+    runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [smoke, e2e-fast]
+        include:
+          - suite: smoke
+            cmd: ./scripts/run_shim_smoke.sh
+          - suite: e2e-fast
+            cmd: sudo -E ./scripts/run_e2e_fast.sh
+    steps:
+      - uses: actions/checkout@v4
+      - name: env
+        run: ./scripts/check_env.sh
+      - name: build
+        run: make
+      - name: go test
+        run: go test ./...
+      - name: run ${{ matrix.suite }}
+        run: ${{ matrix.cmd }}
+
+  cublas-smoke:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: build
+        run: make
+      - name: cublas smoke
+        run: ./scripts/run_cublas_smoke.sh
