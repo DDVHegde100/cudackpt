@@ -74,6 +74,24 @@ func main() {
 			die(err)
 		}
 		fmt.Printf("rollback ok pid=%d\n", pid)
+	case "promote":
+		if len(os.Args) < 4 {
+			usage()
+			os.Exit(2)
+		}
+		pin := control.ParsePromotePin("")
+		for i := 4; i < len(os.Args); i++ {
+			if os.Args[i] == "--pin" && i+1 < len(os.Args) {
+				pin = os.Args[i+1]
+				i++
+			}
+		}
+		if err := orc.Promote(control.PromoteOptions{
+			Src: os.Args[2], Dest: os.Args[3], PinFile: pin,
+		}); err != nil {
+			die(err)
+		}
+		fmt.Println("promote ok")
 	case "gc":
 		root := cfg.ImageRoot
 		maxAge := 14 * 24 * time.Hour
@@ -315,6 +333,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "usage: cudackpt checkpoint <pid> [dir]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt restore <image>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt rollback <image> [--stop <pid>]\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt promote <src> <dest> [--pin file]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt gc [--root dir] [--older-than 14d] [--pin file] [--dry-run]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt freeze|ping|resume|status <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt watch <pid>\n")
