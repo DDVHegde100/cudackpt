@@ -1,0 +1,12 @@
+[Unit]
+Description=cudackpt control socket
+Requires=cudackpt-run.service
+
+[Socket]
+ListenStream=/run/cudackpt/control.sock
+SocketMode=0660
+SocketUser=root
+SocketGroup=cudackpt
+
+[Install]
+WantedBy=sockets.target

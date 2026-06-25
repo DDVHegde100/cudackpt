@@ -1,0 +1,17 @@
+[Unit]
+Description=cudackpt control helper
+Requires=cudackpt.socket
+After=cudackpt-run.service
+
+[Service]
+Type=simple
+User=root
+Group=cudackpt
+Environment=CUDACKPT_RUN_DIR=/run/cudackpt
+ExecStart=/usr/bin/cudackpt ps -v
+StandardInput=socket
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
