@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dhruvhegde/cudackpt/internal/version"
 	"github.com/dhruvhegde/cudackpt/pkg/agent"
 	"github.com/dhruvhegde/cudackpt/pkg/bench"
 	"github.com/dhruvhegde/cudackpt/pkg/config"
@@ -327,6 +328,8 @@ func main() {
 		if !st.OK {
 			os.Exit(1)
 		}
+	case "version":
+		fmt.Println(version.String())
 	case "metrics":
 		addr := ":9090"
 		for i := 2; i < len(os.Args); i++ {
@@ -388,6 +391,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "       cudackpt report <image>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt stats <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt health [-d]\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt version\n")
 }
 
 func die(err error) {

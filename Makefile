@@ -1,10 +1,13 @@
+VERSION := $(shell cat VERSION 2>/dev/null || echo 0.1.0-dev)
+LDFLAGS := -X github.com/dhruvhegde/cudackpt/internal/version.Version=$(VERSION)
+
 BUILD_DIR := build
 GO_OUT := $(BUILD_DIR)/cudackpt
 SHIM := $(BUILD_DIR)/libcudackpt.so
 VECTORADD := $(BUILD_DIR)/vectoradd
 CUBLAS := $(BUILD_DIR)/cublas_gemm
 
-.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test install-systemd gc-images promote-image docker-prod-smoke
+.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test install-systemd gc-images promote-image docker-prod-smoke deb
 
 all: shim go vectoradd
 
@@ -24,8 +27,8 @@ $(SHIM) $(VECTORADD) $(CUBLAS): | $(BUILD_DIR)
 
 go: $(GO_OUT)
 
-$(GO_OUT): $(shell find cmd pkg internal third_party -name '*.go' 2>/dev/null)
-	go build -o $(GO_OUT) ./cmd/cudackpt
+$(GO_OUT): $(shell find cmd pkg internal third_party -name '*.go' 2>/dev/null) VERSION
+	go build -ldflags "$(LDFLAGS)" -o $(GO_OUT) ./cmd/cudackpt
 
 go-test:
 	go test ./...
@@ -83,4 +86,7 @@ promote-image: go
 
 docker-prod-smoke:
 	./scripts/docker_prod_smoke.sh
+
+deb: all
+	bash ./scripts/build-deb.sh
 
