@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a checkpoint, restore, or CLI issue
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Include versions and logs where possible. See [CONTRIBUTING.md](../CONTRIBUTING.md).
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      placeholder: Describe the failure and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: Commands, image path, PID, etc.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: cudackpt version
+      placeholder: output of `cudackpt version`
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, driver, CUDA, Go, CRIU versions
+      placeholder: |
+        Ubuntu 22.04
+        Driver 550.x / CUDA 12.6
+        criu 3.17
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: restore.events.jsonl, CUDACKPT_DEBUG output, restore.err
+      render: shell

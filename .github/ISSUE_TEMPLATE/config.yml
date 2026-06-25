@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/DDVHegde100/cudackpt/blob/main/SECURITY.md
+    about: Report vulnerabilities privately via email — do not use public issues.

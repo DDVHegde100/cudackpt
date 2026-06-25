@@ -183,7 +183,9 @@ export CUDACKPT_DEBUG=1
 
 - [CLI reference](docs/CLI.md) — all commands and flags
 - [Operations guide](docs/OPERATIONS.md) — retention, restore, rollback, agent, metrics
+- [Self-hosted GPU runner](docs/RUNNER.md) — enable full e2e CI and release gate
 - [Changelog](CHANGELOG.md) — release history
+- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ## Limitations
 
@@ -193,4 +195,4 @@ export CUDACKPT_DEBUG=1
 
 ## License
 
-Proprietary. See repository owner for terms.
+Proprietary — all rights reserved. See [LICENSE](LICENSE) for terms and licensing inquiries.
