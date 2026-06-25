@@ -34,13 +34,16 @@ type Client struct {
 	conn net.Conn
 }
 
-func Dial(pid int) (*Client, error) {
-	path := fmt.Sprintf("/run/cudackpt/%d.sock", pid)
+func DialPath(path string) (*Client, error) {
 	c, err := net.Dial("unix", path)
 	if err != nil {
 		return nil, err
 	}
 	return &Client{conn: c}, nil
+}
+
+func Dial(pid int) (*Client, error) {
+	return DialPath(fmt.Sprintf("/run/cudackpt/%d.sock", pid))
 }
 
 func (c *Client) Close() error {
