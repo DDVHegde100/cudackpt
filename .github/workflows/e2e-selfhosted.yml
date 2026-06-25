@@ -1,0 +1,14 @@
+name: e2e
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: env
+        run: ./scripts/check_env.sh
+      - name: e2e
+        run: sudo -E ./scripts/run_e2e_fast.sh
