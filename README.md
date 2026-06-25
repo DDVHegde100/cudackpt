@@ -140,6 +140,8 @@ export CUDACKPT_DEBUG=1
 - GPU restore relies on deterministic reallocation or fixed virtual-address remap; bit-exact resume is workload-dependent.
 - CRIU plus CUDA is experimental; validate on your stack before production use.
 
+See [docs/OPERATIONS.md](docs/OPERATIONS.md) for retention, restore, and rollback procedures.
+
 ## License
 
 Proprietary. See repository owner for terms.
