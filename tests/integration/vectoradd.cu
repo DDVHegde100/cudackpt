@@ -33,9 +33,13 @@ int main() {
   if (cudaMalloc(&d_c, bytes) != cudaSuccess) return 1;
   float *h_a = (float*)malloc(bytes);
   float *h_b = (float*)malloc(bytes);
+  float b_val = 2.0f;
+  if (const char* s = getenv("VECTORADD_B_SCALE")) {
+    b_val = strtof(s, nullptr);
+  }
   for (int i = 0; i < n; ++i) {
     h_a[i] = 1.0f;
-    h_b[i] = 2.0f;
+    h_b[i] = b_val;
   }
   cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice);
   cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice);

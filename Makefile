@@ -4,7 +4,7 @@ SHIM := $(BUILD_DIR)/libcudackpt.so
 VECTORADD := $(BUILD_DIR)/vectoradd
 CUBLAS := $(BUILD_DIR)/cublas_gemm
 
-.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas restore validate all-tests bench go-test install-systemd
+.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test install-systemd
 
 all: shim go vectoradd
 
@@ -56,6 +56,9 @@ e2e-fast: all
 
 e2e-cublas: all
 	sudo -E ./scripts/run_e2e_cublas.sh
+
+e2e-pipeline: all
+	sudo -E ./scripts/run_e2e_pipeline.sh
 
 restore: all
 	@test -n "$(IMAGE)" || (echo "usage: make restore IMAGE=/path/to/image" && exit 2)

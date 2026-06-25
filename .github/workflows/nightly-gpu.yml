@@ -16,12 +16,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [smoke, e2e-fast]
+        suite: [smoke, e2e-fast, e2e-cublas, e2e-pipeline]
         include:
           - suite: smoke
             cmd: ./scripts/run_shim_smoke.sh
           - suite: e2e-fast
             cmd: sudo -E ./scripts/run_e2e_fast.sh
+          - suite: e2e-cublas
+            cmd: sudo -E ./scripts/run_e2e_cublas.sh
+          - suite: e2e-pipeline
+            cmd: sudo -E ./scripts/run_e2e_pipeline.sh
     steps:
       - uses: actions/checkout@v4
       - name: env
