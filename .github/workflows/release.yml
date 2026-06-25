@@ -11,6 +11,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: nvidia/cuda:12.6.0-devel-ubuntu22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -59,36 +61,11 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           VER="${TAG#v}"
-          NOTES="$(cat <<EOF
-          ## cudackpt ${VER}
-
-          First public release — checkpoint and restore single-GPU CUDA processes on Linux using an LD_PRELOAD shim and CRIU.
-
-          ### Install
-
-          \`\`\`bash
-          sudo dpkg -i cudackpt_${VER}_amd64.deb
-          \`\`\`
-
-          Or build from source: \`git clone\` → \`make\` → \`sudo make install\`
-
-          ### Highlights
-
-          - CUDA Driver API interception without app changes
-          - Versioned GPU images with CRC32C, compression, sparse/dedup/delta options
-          - Full CLI: checkpoint, restore, rollback, inspect, metrics agent
-          - Prometheus metrics, RPC auth, systemd units
-
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${TAG}/CHANGELOG.md) for full notes.
-
-          > GPU e2e on a self-hosted runner is recommended before production use. The \`gpu-gate\` job runs when a self-hosted runner is available.
-          EOF
-          )"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/cudackpt_"${VER}"_amd64.deb --clobber
           else
             gh release create "$TAG" \
               --title "cudackpt ${VER}" \
-              --notes "$NOTES" \
+              --notes-file .github/release-notes/${TAG}.md \
               dist/cudackpt_"${VER}"_amd64.deb
           fi
