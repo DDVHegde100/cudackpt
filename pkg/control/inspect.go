@@ -36,6 +36,9 @@ func InspectImage(dir string) error {
 	if b, err := os.ReadFile(filepath.Join(dir, "restored.pid")); err == nil {
 		fmt.Printf("restored.pid=%s", string(b))
 	}
+	if b, err := os.ReadFile(filepath.Join(dir, restoreEventsName)); err == nil && len(b) > 0 {
+		fmt.Printf("restore.events=%d bytes\n", len(b))
+	}
 	if b, err := os.ReadFile(filepath.Join(dir, "restore.err")); err == nil {
 		fmt.Printf("restore.err=%s", string(b))
 	}

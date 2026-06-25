@@ -122,9 +122,11 @@ func (o *Orchestrator) tryShimRestore(imagePath string, pid int) (int, error) {
 	if err := cli.Restore(imagePath); err != nil {
 		return 0, ckpterr.Wrap(ckpterr.CUDA, "gpu restore", err)
 	}
+	logRestorePhase(imagePath, "gpu", pid, nil)
 	if err := cli.Resume(); err != nil {
 		return 0, ckpterr.Wrap(ckpterr.RPC, "resume", err)
 	}
+	logRestorePhase(imagePath, "resume", pid, nil)
 	return pid, nil
 }
 

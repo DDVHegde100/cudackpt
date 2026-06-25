@@ -99,15 +99,17 @@ func (o *Orchestrator) verifyImage(dir string) error {
 }
 
 func (o *Orchestrator) Restore(imagePath string) (int, error) {
-	jlog.Info("restore_start", map[string]any{"dir": imagePath})
+	logRestorePhase(imagePath, "start", 0, nil)
 	if err := PreflightRestore(imagePath); err != nil {
 		jlog.Error("restore_preflight", err, map[string]any{"dir": imagePath})
 		return 0, err
 	}
+	logRestorePhase(imagePath, "preflight", 0, nil)
 	if err := image.EnsureDeviceMaterialized(imagePath); err != nil {
 		jlog.Error("restore_materialize", err, map[string]any{"dir": imagePath})
 		return 0, ckpterr.Wrap(ckpterr.IO, "materialize", err)
 	}
+	logRestorePhase(imagePath, "materialize", 0, nil)
 	logPath := filepath.Join(imagePath, "restore.log")
 	var env []string
 	if m, err := image.ReadMeta(filepath.Join(imagePath, "meta.bin")); err == nil {
@@ -124,11 +126,16 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 		return 0, ckpterr.Wrap(ckpterr.CRIU, "restore", err)
 	}
 	if pid > 0 {
-		_ = writeRestoreHandoff(imagePath, pid)
+		_ = recordRestorePID(imagePath, pid)
 	} else if filePID := readRestoredPID(imagePath); filePID > 0 {
 		pid = filePID
+		logRestorePhase(imagePath, "criu", pid, map[string]any{"source": "pidfile"})
+	} else {
+		logRestorePhase(imagePath, "criu", 0, map[string]any{"source": "unknown"})
 	}
-	jlog.Info("restore_criu_ok", map[string]any{"dir": imagePath, "pid": pid})
+	if pid > 0 {
+		logRestorePhase(imagePath, "criu", pid, nil)
+	}
 	deadline := time.Now().Add(o.cfg.RestoreTimeout)
 	attempt := 0
 	for time.Now().Before(deadline) {
@@ -140,7 +147,7 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 		}
 		target := resolveRestorePID(imagePath, pid, pids)
 		if target > 0 && !shimSocketReady(o.cfg.RunDir, target) {
-			jlog.Info("restore_wait_shim", map[string]any{"pid": target, "attempt": attempt})
+			logRestorePhase(imagePath, "wait_shim", target, map[string]any{"attempt": attempt})
 			time.Sleep(restorePollDelay(attempt, o.cfg.RetryBackoff))
 			continue
 		}
@@ -149,8 +156,8 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 				continue
 			}
 			if got, rerr := o.tryShimRestore(imagePath, try); rerr == nil {
-				_ = writeRestoreHandoff(imagePath, got)
-				jlog.Info("restore_ok", map[string]any{"pid": got, "dir": imagePath, "attempt": attempt})
+				_ = recordRestorePID(imagePath, got)
+				logRestorePhase(imagePath, "complete", got, map[string]any{"attempt": attempt})
 				return got, nil
 			}
 		}
@@ -158,6 +165,7 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 	}
 	err = ckpterr.E(ckpterr.RPC, "shim not ready after criu restore")
 	jlog.Error("restore_fail", err, map[string]any{"dir": imagePath})
+	logRestorePhase(imagePath, "failed", pid, map[string]any{"attempt": attempt})
 	return 0, err
 }
 
