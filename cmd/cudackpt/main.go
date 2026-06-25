@@ -22,6 +22,7 @@ func main() {
 	}
 	cfg := config.Load()
 	orc := control.New(cfg)
+	var err error
 	switch os.Args[1] {
 	case "checkpoint":
 		if len(os.Args) < 3 {
@@ -50,6 +51,27 @@ func main() {
 			die(err)
 		}
 		fmt.Printf("restore ok pid=%d\n", pid)
+	case "rollback":
+		if len(os.Args) < 3 {
+			usage()
+			os.Exit(2)
+		}
+		image := os.Args[2]
+		stopPID := 0
+		for i := 3; i < len(os.Args); i++ {
+			if os.Args[i] == "--stop" && i+1 < len(os.Args) {
+				stopPID, err = strconv.Atoi(os.Args[i+1])
+				if err != nil {
+					die(err)
+				}
+				i++
+			}
+		}
+		pid, err := orc.Rollback(image, stopPID)
+		if err != nil {
+			die(err)
+		}
+		fmt.Printf("rollback ok pid=%d\n", pid)
 	case "freeze", "ping", "resume", "status":
 		if len(os.Args) < 3 {
 			usage()
@@ -242,6 +264,7 @@ func main() {
 func usage() {
 	fmt.Fprintf(os.Stderr, "usage: cudackpt checkpoint <pid> [dir]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt restore <image>\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt rollback <image> [--stop <pid>]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt freeze|ping|resume|status <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt watch <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt bench <pid> [count]\n")
