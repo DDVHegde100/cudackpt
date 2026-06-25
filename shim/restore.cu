@@ -1,5 +1,7 @@
 #include "ckpt_ops.h"
 #include "log.h"
+#include "module_io.hpp"
+#include "pinned_pool.hpp"
 #include "tracker.hpp"
 #include <algorithm>
 #include <atomic>
@@ -79,7 +81,8 @@ static CUresult map_at(CUdevice dev, CUdeviceptr want, size_t sz) {
 struct RestoreTask {
   ChunkEntry entry;
   CUdeviceptr ptr;
-  std::vector<uint8_t> host;
+  void* host;
+  size_t host_cap;
   int err_code;
   CUresult err;
 };
@@ -90,7 +93,7 @@ static void restore_htod_worker(std::vector<RestoreTask>* tasks, std::atomic<siz
     size_t i = next->fetch_add(1);
     if (i >= tasks->size() || fail->load() != 0) return;
     RestoreTask& t = (*tasks)[i];
-    CUresult r = cuMemcpyHtoD(t.ptr, t.host.data(), static_cast<size_t>(t.entry.size));
+    CUresult r = cuMemcpyHtoD(t.ptr, t.host, static_cast<size_t>(t.entry.size));
     if (r != CUDA_SUCCESS) {
       t.err_code = -10;
       t.err = r;
@@ -140,17 +143,21 @@ int ckpt_restore_load(const char* dir, ChunkEntry* entries, int max, int* count)
   }
   CUresult r = cuInit(0);
   if (r != CUDA_SUCCESS) return restore_fail(dir, -6, r, "cuInit");
-  CUcontext ctx = nullptr;
-  if (cuCtxGetCurrent(&ctx) != CUDA_SUCCESS || ctx == nullptr) {
-    r = cuDevicePrimaryCtxRetain(&ctx, dev);
-    if (r != CUDA_SUCCESS) return restore_fail(dir, -7, r, "ctx retain");
+  ckpt_ctx_restore(dir);
+  CUcontext ctx = tr.primary();
+  if (!ctx) {
+    if (cuDevicePrimaryCtxRetain(&ctx, dev) != CUDA_SUCCESS)
+      return restore_fail(dir, -7, r, "ctx retain");
   }
   r = cuCtxSetCurrent(ctx);
   if (r != CUDA_SUCCESS) return restore_fail(dir, -8, r, "ctx set");
   tr.set_primary(ctx);
   tr.set_device(dev);
   tr.clear();
-  tr.track_ctx(ctx, dev, 0);
+  tr.track_ctx(ctx, dev, tr.primary_flags());
+  if (ckpt_modules_restore(dir) != 0) return restore_fail(dir, -35, CUDA_SUCCESS, "modules");
+  ckpt_streams_restore(dir);
+  auto& pool = PinnedPool::instance();
   std::vector<RestoreTask> tasks(want.size());
   for (size_t i = 0; i < want.size(); ++i) {
     const auto& e = want[i];
@@ -166,10 +173,11 @@ int ckpt_restore_load(const char* dir, ChunkEntry* entries, int max, int* count)
     }
     tasks[i].ptr = p;
     tr.track_alloc(p, static_cast<size_t>(e.size), ctx, 0);
-    tasks[i].host.resize(static_cast<size_t>(e.size));
+    tasks[i].host_cap = static_cast<size_t>(e.size);
+    tasks[i].host = pool.acquire(tasks[i].host_cap);
+    if (!tasks[i].host) return restore_fail(dir, -17, CUDA_ERROR_OUT_OF_MEMORY, "pinned");
     df.seekg(static_cast<std::streamoff>(e.offset));
-    df.read(reinterpret_cast<char*>(tasks[i].host.data()),
-            static_cast<std::streamsize>(e.size));
+    df.read(static_cast<char*>(tasks[i].host), static_cast<std::streamsize>(e.size));
     if (!df) return restore_fail(dir, -9, CUDA_SUCCESS, "device read");
   }
   unsigned hw = std::thread::hardware_concurrency();
@@ -178,15 +186,18 @@ int ckpt_restore_load(const char* dir, ChunkEntry* entries, int max, int* count)
   if (workers == 0) workers = 1;
   std::atomic<size_t> next{0};
   std::atomic<int> fail{0};
-  std::vector<std::thread> pool;
-  pool.reserve(workers);
+  std::vector<std::thread> thpool;
+  thpool.reserve(workers);
   for (unsigned w = 0; w < workers; ++w)
-    pool.emplace_back(restore_htod_worker, &tasks, &next, &fail);
-  for (auto& th : pool) th.join();
+    thpool.emplace_back(restore_htod_worker, &tasks, &next, &fail);
+  for (auto& th : thpool) th.join();
   if (fail.load() != 0) {
     for (const auto& t : tasks) {
       if (t.err_code != 0) return restore_fail(dir, t.err_code, t.err, "htod");
     }
+  }
+  for (auto& t : tasks) {
+    if (t.host) pool.release(t.host);
   }
   r = cuCtxSynchronize();
   if (r != CUDA_SUCCESS) return restore_fail(dir, -11, r, "sync");
