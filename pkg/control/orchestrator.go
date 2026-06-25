@@ -9,6 +9,7 @@ import (
 	"github.com/dhruvhegde/cudackpt/internal/ckpterr"
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/image"
+	jlog "github.com/dhruvhegde/cudackpt/pkg/log"
 	"github.com/dhruvhegde/cudackpt/pkg/storage"
 	"github.com/dhruvhegde/cudackpt/third_party/criu"
 )
@@ -30,32 +31,45 @@ func (o *Orchestrator) Checkpoint(pid int, out string) error {
 	if out == "" {
 		out = imageDir(o.cfg.ImageRoot, pid)
 	}
-	if err := os.MkdirAll(out, 0o755); err != nil {
-		return ckpterr.Wrap(ckpterr.IO, "mkdir", err)
-	}
-	if err := o.Freeze(pid); err != nil {
+	jlog.Info("checkpoint_start", map[string]any{"pid": pid, "dir": out})
+	opts := image.OptsFromEnv()
+	err := image.WriteStaging(out, func(staging string) error {
+		if err := o.Freeze(pid); err != nil {
+			return err
+		}
+		if err := o.Snapshot(pid, staging); err != nil {
+			return err
+		}
+		if err := image.ProcessImage(staging, opts); err != nil {
+			return ckpterr.Wrap(ckpterr.IO, "process", err)
+		}
+		if err := o.criu.Dump(pid, staging); err != nil {
+			return ckpterr.Wrap(ckpterr.CRIU, "dump", err)
+		}
+		dev, _ := image.ReadDev(filepath.Join(staging, "dev.bin"))
+		meta := image.Meta{
+			Pid:     uint32(pid),
+			Dev:     dev,
+			Preload: os.Getenv("LD_PRELOAD"),
+			Visible: os.Getenv("CUDA_VISIBLE_DEVICES"),
+		}
+		if err := image.WriteMeta(filepath.Join(staging, "meta.bin"), meta); err != nil {
+			return ckpterr.Wrap(ckpterr.IO, "meta", err)
+		}
+		return nil
+	})
+	if err != nil {
+		jlog.Error("checkpoint_fail", err, map[string]any{"pid": pid})
 		return err
 	}
-	if err := o.Snapshot(pid, out); err != nil {
-		return err
-	}
-	if err := o.criu.Dump(pid, out); err != nil {
-		return ckpterr.Wrap(ckpterr.CRIU, "dump", err)
-	}
-	dev, _ := image.ReadDev(filepath.Join(out, "dev.bin"))
-	meta := image.Meta{
-		Pid:     uint32(pid),
-		Dev:     dev,
-		Preload: os.Getenv("LD_PRELOAD"),
-		Visible: os.Getenv("CUDA_VISIBLE_DEVICES"),
-	}
-	if err := image.WriteMeta(filepath.Join(out, "meta.bin"), meta); err != nil {
-		return ckpterr.Wrap(ckpterr.IO, "meta", err)
-	}
+	jlog.Info("checkpoint_ok", map[string]any{"pid": pid, "dir": out})
 	return nil
 }
 
 func (o *Orchestrator) verifyImage(dir string) error {
+	if err := image.EnsureDeviceMaterialized(dir); err != nil {
+		return ckpterr.Wrap(ckpterr.IO, "materialize", err)
+	}
 	tier, err := storage.New(dir)
 	if err != nil {
 		return ckpterr.Wrap(ckpterr.IO, "tier", err)
@@ -85,6 +99,11 @@ func (o *Orchestrator) verifyImage(dir string) error {
 }
 
 func (o *Orchestrator) Restore(imagePath string) (int, error) {
+	jlog.Info("restore_start", map[string]any{"dir": imagePath})
+	if err := image.EnsureDeviceMaterialized(imagePath); err != nil {
+		jlog.Error("restore_materialize", err, map[string]any{"dir": imagePath})
+		return 0, ckpterr.Wrap(ckpterr.IO, "materialize", err)
+	}
 	logPath := filepath.Join(imagePath, "restore.log")
 	var env []string
 	if m, err := image.ReadMeta(filepath.Join(imagePath, "meta.bin")); err == nil {
@@ -97,6 +116,7 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 	}
 	pid, err := o.criu.Restore(imagePath, logPath, env)
 	if err != nil {
+		jlog.Error("restore_criu", err, map[string]any{"dir": imagePath})
 		return 0, ckpterr.Wrap(ckpterr.CRIU, "restore", err)
 	}
 	if pid == 0 {
@@ -120,12 +140,15 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 		}
 		for _, try := range candidates {
 			if got, rerr := o.tryShimRestore(imagePath, try); rerr == nil {
+				jlog.Info("restore_ok", map[string]any{"pid": got, "dir": imagePath})
 				return got, nil
 			}
 		}
 		time.Sleep(o.cfg.ShimPoll)
 	}
-	return 0, ckpterr.E(ckpterr.RPC, "shim not ready after criu restore")
+	err = ckpterr.E(ckpterr.RPC, "shim not ready after criu restore")
+	jlog.Error("restore_fail", err, map[string]any{"dir": imagePath})
+	return 0, err
 }
 
 func ListShims(runDir string) ([]int, error) {

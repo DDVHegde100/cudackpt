@@ -18,6 +18,9 @@ func (o *Orchestrator) ValidateImage(dir string) error {
 			return ckpterr.Wrap(ckpterr.Invalid, name, err)
 		}
 	}
+	if !image.IsComplete(dir) {
+		return ckpterr.E(ckpterr.Invalid, "checkpoint not finalized")
+	}
 	if m, err := image.ReadMeta(filepath.Join(dir, "meta.bin")); err != nil {
 		return ckpterr.Wrap(ckpterr.Invalid, "meta", err)
 	} else if m.Preload == "" {

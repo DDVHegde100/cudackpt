@@ -4,6 +4,8 @@ import (
 	"sort"
 
 	"github.com/dhruvhegde/cudackpt/internal/ckpterr"
+	"github.com/dhruvhegde/cudackpt/pkg/image"
+	jlog "github.com/dhruvhegde/cudackpt/pkg/log"
 	"github.com/dhruvhegde/cudackpt/pkg/rpc"
 )
 
@@ -74,10 +76,17 @@ func (o *Orchestrator) Snapshot(pid int, dir string) error {
 	if err := cli.Snapshot(dir); err != nil {
 		return ckpterr.Wrap(ckpterr.CUDA, "snapshot", err)
 	}
-	return o.verifyImage(dir)
+	if err := o.verifyImage(dir); err != nil {
+		return err
+	}
+	jlog.Info("snapshot_ok", map[string]any{"pid": pid, "dir": dir})
+	return nil
 }
 
 func (o *Orchestrator) GpuRestore(pid int, dir string) error {
+	if err := image.EnsureDeviceMaterialized(dir); err != nil {
+		return ckpterr.Wrap(ckpterr.IO, "materialize", err)
+	}
 	cli, err := dial(pid)
 	if err != nil {
 		return err
