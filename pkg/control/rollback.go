@@ -7,6 +7,7 @@ import (
 
 	"github.com/dhruvhegde/cudackpt/internal/ckpterr"
 	jlog "github.com/dhruvhegde/cudackpt/pkg/log"
+	"github.com/dhruvhegde/cudackpt/pkg/metrics"
 )
 
 func stopProcess(pid int) error {
@@ -48,6 +49,7 @@ func (o *Orchestrator) Rollback(imagePath string, stopPID int) (int, error) {
 		jlog.Error("rollback_restore", err, map[string]any{"dir": imagePath})
 		return 0, err
 	}
+	metrics.Default.Inc(metrics.RollbacksTotal)
 	jlog.Info("rollback_ok", map[string]any{"dir": imagePath, "pid": pid})
 	return pid, nil
 }

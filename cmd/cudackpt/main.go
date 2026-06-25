@@ -14,6 +14,7 @@ import (
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/control"
 	"github.com/dhruvhegde/cudackpt/pkg/health"
+	"github.com/dhruvhegde/cudackpt/pkg/metrics"
 	"github.com/dhruvhegde/cudackpt/pkg/report"
 )
 
@@ -135,6 +136,8 @@ func main() {
 		for _, p := range removed {
 			fmt.Println(p)
 		}
+		metrics.Default.Add(metrics.GCRemovedTotal, uint64(len(removed)))
+		refreshMetricsGauges(cfg)
 		if dryRun {
 			fmt.Fprintf(os.Stderr, "gc dry-run: would remove %d paths\n", len(removed))
 		} else {
@@ -323,6 +326,21 @@ func main() {
 		if !st.OK {
 			os.Exit(1)
 		}
+	case "metrics":
+		addr := ":9090"
+		for i := 2; i < len(os.Args); i++ {
+			if os.Args[i] == "--listen" && i+1 < len(os.Args) {
+				addr = os.Args[i+1]
+				i++
+			} else {
+				die(fmt.Errorf("metrics: unknown flag %q", os.Args[i]))
+			}
+		}
+		refreshMetricsGauges(cfg)
+		fmt.Fprintf(os.Stderr, "metrics listening on %s/metrics\n", addr)
+		if err := metrics.Serve(addr, metrics.Default); err != nil {
+			die(err)
+		}
 	default:
 		usage()
 		os.Exit(2)
@@ -335,6 +353,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "       cudackpt rollback <image> [--stop <pid>]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt promote <src> <dest> [--pin file]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt gc [--root dir] [--older-than 14d] [--pin file] [--dry-run]\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt metrics [--listen addr]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt freeze|ping|resume|status <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt watch <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt bench <pid> [count]\n")
@@ -364,4 +383,15 @@ func parseAge(s string) (time.Duration, error) {
 		return time.Duration(n) * 24 * time.Hour, nil
 	}
 	return time.ParseDuration(s)
+}
+
+func refreshMetricsGauges(cfg config.Config) {
+	imgs, err := control.ListImages(cfg.ImageRoot)
+	if err == nil {
+		metrics.Default.Set(metrics.ImagesGauge, float64(len(imgs)))
+	}
+	shims, err := control.ListShims(cfg.RunDir)
+	if err == nil {
+		metrics.Default.Set(metrics.ShimsGauge, float64(len(shims)))
+	}
 }

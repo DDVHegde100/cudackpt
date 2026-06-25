@@ -10,6 +10,7 @@ import (
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/image"
 	jlog "github.com/dhruvhegde/cudackpt/pkg/log"
+	"github.com/dhruvhegde/cudackpt/pkg/metrics"
 	"github.com/dhruvhegde/cudackpt/pkg/storage"
 	"github.com/dhruvhegde/cudackpt/third_party/criu"
 )
@@ -60,8 +61,10 @@ func (o *Orchestrator) Checkpoint(pid int, out string) error {
 	})
 	if err != nil {
 		jlog.Error("checkpoint_fail", err, map[string]any{"pid": pid})
+		metrics.Default.Inc(metrics.CheckpointFailures)
 		return err
 	}
+	metrics.Default.Inc(metrics.CheckpointsTotal)
 	jlog.Info("checkpoint_ok", map[string]any{"pid": pid, "dir": out})
 	return nil
 }
@@ -158,6 +161,7 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 			if got, rerr := o.tryShimRestore(imagePath, try); rerr == nil {
 				_ = recordRestorePID(imagePath, got)
 				logRestorePhase(imagePath, "complete", got, map[string]any{"attempt": attempt})
+				metrics.Default.Inc(metrics.RestoresTotal)
 				return got, nil
 			}
 		}
@@ -166,6 +170,7 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 	err = ckpterr.E(ckpterr.RPC, "shim not ready after criu restore")
 	jlog.Error("restore_fail", err, map[string]any{"dir": imagePath})
 	logRestorePhase(imagePath, "failed", pid, map[string]any{"attempt": attempt})
+	metrics.Default.Inc(metrics.RestoreFailuresTotal)
 	return 0, err
 }
 

@@ -4,7 +4,7 @@ SHIM := $(BUILD_DIR)/libcudackpt.so
 VECTORADD := $(BUILD_DIR)/vectoradd
 CUBLAS := $(BUILD_DIR)/cublas_gemm
 
-.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test install-systemd gc-images
+.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test install-systemd gc-images promote-image
 
 all: shim go vectoradd
 
@@ -76,4 +76,8 @@ install-systemd:
 
 gc-images: go
 	./scripts/gc_images.sh
+
+promote-image: go
+	@test -n "$(SRC)" && test -n "$(DEST)" || (echo "usage: make promote-image SRC=/path DEST=/path [PIN=/path/to/pins]" && exit 2)
+	./scripts/promote_image.sh "$(SRC)" "$(DEST)" $(if $(PIN),--pin "$(PIN)",)
 
