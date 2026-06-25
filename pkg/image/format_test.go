@@ -21,7 +21,7 @@ func TestManifestRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hdr.Magic != Magic || hdr.Count != 2 || hdr.TotalBytes != 12288 {
+	if hdr.Magic != Magic || hdr.Version != VersionV2 || hdr.Count != 2 || hdr.TotalBytes != 12288 {
 		t.Fatalf("hdr %+v", hdr)
 	}
 	if len(got) != 2 || got[0].Seq != 1 || got[1].Ptr != 0x2000 {

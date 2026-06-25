@@ -168,7 +168,7 @@ int ckpt_snapshot_write(const char* dir, ChunkEntry* entries, int* count) {
     uint16_t flags;
     uint32_t count;
     uint64_t total;
-  } hdr{0x434B5054u, 1, 0, static_cast<uint32_t>(manifest.size()), off};
+  } hdr{0x434B5054u, 2, 0, static_cast<uint32_t>(manifest.size()), off};
   mf.write(reinterpret_cast<const char*>(&hdr), sizeof(hdr));
   mf.write(reinterpret_cast<const char*>(manifest.data()),
            static_cast<std::streamsize>(manifest.size() * sizeof(ChunkEntry)));
