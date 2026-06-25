@@ -9,8 +9,8 @@ import (
 	"github.com/dhruvhegde/cudackpt/pkg/rpc"
 )
 
-func dial(pid int) (*rpc.Client, error) {
-	cli, err := rpc.Dial(pid)
+func (o *Orchestrator) dial(pid int) (*rpc.Client, error) {
+	cli, err := rpc.DialPath(shimSocketPath(o.cfg.RunDir, pid))
 	if err != nil {
 		return nil, ckpterr.Wrap(ckpterr.RPC, "dial", err)
 	}
@@ -18,7 +18,7 @@ func dial(pid int) (*rpc.Client, error) {
 }
 
 func (o *Orchestrator) Ping(pid int) error {
-	cli, err := dial(pid)
+	cli, err := o.dial(pid)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func (o *Orchestrator) Ping(pid int) error {
 }
 
 func (o *Orchestrator) Status(pid int) (uint32, error) {
-	cli, err := dial(pid)
+	cli, err := o.dial(pid)
 	if err != nil {
 		return 0, err
 	}
@@ -43,7 +43,7 @@ func (o *Orchestrator) Status(pid int) (uint32, error) {
 }
 
 func (o *Orchestrator) Stats(pid int) (rpc.Stats, error) {
-	cli, err := dial(pid)
+	cli, err := o.dial(pid)
 	if err != nil {
 		return rpc.Stats{}, err
 	}
@@ -56,7 +56,7 @@ func (o *Orchestrator) Stats(pid int) (rpc.Stats, error) {
 }
 
 func (o *Orchestrator) Freeze(pid int) error {
-	cli, err := dial(pid)
+	cli, err := o.dial(pid)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (o *Orchestrator) Freeze(pid int) error {
 }
 
 func (o *Orchestrator) Snapshot(pid int, dir string) error {
-	cli, err := dial(pid)
+	cli, err := o.dial(pid)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (o *Orchestrator) GpuRestore(pid int, dir string) error {
 	if err := image.EnsureDeviceMaterialized(dir); err != nil {
 		return ckpterr.Wrap(ckpterr.IO, "materialize", err)
 	}
-	cli, err := dial(pid)
+	cli, err := o.dial(pid)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (o *Orchestrator) GpuRestore(pid int, dir string) error {
 }
 
 func (o *Orchestrator) Resume(pid int) error {
-	cli, err := dial(pid)
+	cli, err := o.dial(pid)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (o *Orchestrator) Resume(pid int) error {
 }
 
 func (o *Orchestrator) tryShimRestore(imagePath string, pid int) (int, error) {
-	cli, err := rpc.Dial(pid)
+	cli, err := o.dial(pid)
 	if err != nil {
 		return 0, err
 	}
