@@ -13,6 +13,11 @@ add_library(cudackpt SHARED
   shim/ipc.c
   shim/snapshot.cu
   shim/restore.cu
+  shim/module_io.cpp
+  shim/coalesce.cpp
+  shim/quiesce.cpp
+  shim/pinned_pool.cpp
+  shim/errcode.c
 )
 
 set_source_files_properties(shim/interpose.c PROPERTIES LANGUAGE CXX)
