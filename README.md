@@ -142,6 +142,8 @@ export CUDACKPT_DEBUG=1
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md) for retention, restore, and rollback procedures.
 
+See [docs/CLI.md](docs/CLI.md) for the complete command reference.
+
 ## License
 
 Proprietary. See repository owner for terms.
