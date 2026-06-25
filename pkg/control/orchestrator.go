@@ -100,6 +100,10 @@ func (o *Orchestrator) verifyImage(dir string) error {
 
 func (o *Orchestrator) Restore(imagePath string) (int, error) {
 	jlog.Info("restore_start", map[string]any{"dir": imagePath})
+	if err := PreflightRestore(imagePath); err != nil {
+		jlog.Error("restore_preflight", err, map[string]any{"dir": imagePath})
+		return 0, err
+	}
 	if err := image.EnsureDeviceMaterialized(imagePath); err != nil {
 		jlog.Error("restore_materialize", err, map[string]any{"dir": imagePath})
 		return 0, ckpterr.Wrap(ckpterr.IO, "materialize", err)
