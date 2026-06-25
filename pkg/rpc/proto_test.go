@@ -18,8 +18,8 @@ func TestWriteReadU32(t *testing.T) {
 }
 
 func TestOpConstants(t *testing.T) {
-	if OpPing != 1 || OpResume != 6 {
-		t.Fatalf("ops ping=%d resume=%d", OpPing, OpResume)
+	if OpPing != 1 || OpResume != 6 || OpAuth != 9 {
+		t.Fatalf("ops ping=%d resume=%d auth=%d", OpPing, OpResume, OpAuth)
 	}
 	var b [4]byte
 	binary.BigEndian.PutUint32(b[:], OpSnapshot)

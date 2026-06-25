@@ -28,7 +28,8 @@ enum {
   OP_RESTORE = 5,
   OP_RESUME = 6,
   OP_QUIT = 7,
-  OP_STATS = 8
+  OP_STATS = 8,
+  OP_AUTH = 9
 };
 
 enum {
@@ -45,6 +46,8 @@ static pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t g_cv = PTHREAD_COND_INITIALIZER;
 static char g_image_dir[512];
 static volatile sig_atomic_t g_sigckpt = 0;
+static char g_rpc_secret[256];
+static size_t g_rpc_secret_len = 0;
 
 extern int ckpt_snapshot_write(const char* dir, ChunkEntry* entries, int* count);
 extern int ckpt_restore_load(const char* dir, ChunkEntry* entries, int max, int* count);
@@ -102,7 +105,41 @@ static void write_stats(int fd) {
   write_u32(fd, static_cast<uint32_t>(st.state));
 }
 
+static int secrets_match(const char* got) {
+  if (g_rpc_secret_len == 0) return 1;
+  if (!got) return 0;
+  size_t glen = strlen(got);
+  unsigned char diff = (unsigned char)(glen ^ g_rpc_secret_len);
+  size_t n = glen > g_rpc_secret_len ? glen : g_rpc_secret_len;
+  for (size_t i = 0; i < n; i++) {
+    char a = i < g_rpc_secret_len ? g_rpc_secret[i] : 0;
+    char b = i < glen ? got[i] : 0;
+    diff |= (unsigned char)(a ^ b);
+  }
+  return diff == 0;
+}
+
+static int require_auth(int cfd) {
+  if (g_rpc_secret_len == 0) return 0;
+  uint32_t op = read_u32(cfd);
+  if (op != OP_AUTH) {
+    write_u32(cfd, 2);
+    return -1;
+  }
+  char tok[512];
+  if (read_str(cfd, tok, sizeof(tok)) != 0 || !secrets_match(tok)) {
+    write_u32(cfd, 1);
+    return -1;
+  }
+  write_u32(cfd, 0);
+  return 0;
+}
+
 static void handle_client(int cfd) {
+  if (require_auth(cfd) != 0) {
+    close(cfd);
+    return;
+  }
   uint32_t op = read_u32(cfd);
   char path[512];
   switch (op) {
@@ -217,6 +254,12 @@ __attribute__((constructor)) static void ckpt_ipc_init() {
     set_state(ST_FROZEN);
   else
     set_state(ST_RUNNING);
+  const char* sec = getenv("CUDACKPT_RPC_SECRET");
+  if (sec && sec[0]) {
+    strncpy(g_rpc_secret, sec, sizeof(g_rpc_secret) - 1);
+    g_rpc_secret[sizeof(g_rpc_secret) - 1] = 0;
+    g_rpc_secret_len = strlen(g_rpc_secret);
+  }
 }
 
 int ckpt_wait_frozen() {

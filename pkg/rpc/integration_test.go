@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"encoding/binary"
 	"net"
 	"os"
 	"path/filepath"
@@ -25,7 +24,7 @@ func TestMockShimRPC(t *testing.T) {
 			if err != nil {
 				return
 			}
-			go handleMock(c)
+			go handleMockConn(c, "")
 		}
 	}()
 	cli, err := DialPath(sock)
@@ -47,23 +46,5 @@ func TestMockShimRPC(t *testing.T) {
 }
 
 func handleMock(c net.Conn) {
-	defer c.Close()
-	var op [4]byte
-	if _, err := c.Read(op[:]); err != nil {
-		return
-	}
-	v := binary.BigEndian.Uint32(op[:])
-	switch v {
-	case OpPing, OpFreeze, OpResume:
-		_ = writeU32(c, 0)
-	case OpStatus:
-		_ = writeU32(c, 4)
-	case OpStats:
-		_ = writeU32(c, 0)
-		for _, n := range []uint32{2, 4096, 0, 0, 1, 0, 0, 0, 0, 0, 4} {
-			_ = writeU32(c, n)
-		}
-	default:
-		_ = writeU32(c, 1)
-	}
+	handleMockConn(c, "")
 }

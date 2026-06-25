@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 	OpResume    uint32 = 6
 	OpQuit      uint32 = 7
 	OpStats     uint32 = 8
+	OpAuth      uint32 = 9
 )
 
 type Stats struct {
@@ -37,6 +39,10 @@ type Client struct {
 func DialPath(path string) (*Client, error) {
 	c, err := net.Dial("unix", path)
 	if err != nil {
+		return nil, err
+	}
+	if err := authenticate(c, os.Getenv("CUDACKPT_RPC_SECRET")); err != nil {
+		_ = c.Close()
 		return nil, err
 	}
 	return &Client{conn: c}, nil
@@ -77,6 +83,26 @@ func writeStr(w io.Writer, s string) error {
 	}
 	_, err := w.Write([]byte(s))
 	return err
+}
+
+func authenticate(conn net.Conn, secret string) error {
+	if secret == "" {
+		return nil
+	}
+	if err := writeU32(conn, OpAuth); err != nil {
+		return err
+	}
+	if err := writeStr(conn, secret); err != nil {
+		return err
+	}
+	rc, err := readU32(conn)
+	if err != nil {
+		return err
+	}
+	if rc != 0 {
+		return fmt.Errorf("auth rc=%d", rc)
+	}
+	return nil
 }
 
 func (c *Client) call(op uint32, path string) (uint32, error) {
