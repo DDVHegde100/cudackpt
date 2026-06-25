@@ -2,8 +2,9 @@ BUILD_DIR := build
 GO_OUT := $(BUILD_DIR)/cudackpt
 SHIM := $(BUILD_DIR)/libcudackpt.so
 VECTORADD := $(BUILD_DIR)/vectoradd
+CUBLAS := $(BUILD_DIR)/cublas_gemm
 
-.PHONY: all clean test shim go vectoradd install smoke checkpoint e2e e2e-fast restore validate all-tests bench go-test
+.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast restore validate all-tests bench go-test install-systemd
 
 all: shim go vectoradd
 
@@ -12,12 +13,12 @@ install: all
 	install -m 755 $(SHIM) $(DESTDIR)/usr/lib/libcudackpt.so
 	install -m 755 $(GO_OUT) $(DESTDIR)/usr/bin/cudackpt
 
-shim: $(SHIM) $(VECTORADD)
+shim: $(SHIM) $(VECTORADD) $(CUBLAS)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(SHIM) $(VECTORADD): | $(BUILD_DIR)
+$(SHIM) $(VECTORADD) $(CUBLAS): | $(BUILD_DIR)
 	cmake -S . -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release
 	cmake --build $(BUILD_DIR) -j
 
@@ -63,3 +64,6 @@ all-tests: all
 validate: go
 	@test -n "$(IMAGE)" || (echo "usage: make validate IMAGE=/path/to/image" && exit 2)
 	$(GO_OUT) validate $(IMAGE)
+
+install-systemd:
+	sudo -E ./scripts/install-systemd.sh

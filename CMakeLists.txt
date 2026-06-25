@@ -40,6 +40,13 @@ set_target_properties(vectoradd PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
+add_executable(cublas_gemm tests/integration/cublas_gemm.cu shim/app_hooks.c)
+target_include_directories(cublas_gemm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shim)
+target_link_libraries(cublas_gemm PRIVATE CUDA::cudart CUDA::cublas)
+set_target_properties(cublas_gemm PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
 enable_testing()
 add_executable(tracker_test tests/unit/tracker_test.cpp shim/tracker.cpp)
 target_include_directories(tracker_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/shim)
