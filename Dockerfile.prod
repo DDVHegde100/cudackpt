@@ -1,0 +1,23 @@
+FROM nvidia/cuda:12.6.0-devel-ubuntu22.04 AS builder
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  cmake build-essential golang-go ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY . .
+RUN make
+
+FROM nvidia/cuda:12.6.0-runtime-ubuntu22.04
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+  criu ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && useradd -r -s /usr/sbin/nologin -d /var/lib/cudackpt cudackpt \
+  && mkdir -p /run/cudackpt /var/lib/cudackpt \
+  && chown cudackpt:cudackpt /var/lib/cudackpt \
+  && chmod 0755 /run/cudackpt
+COPY --from=builder /src/build/libcudackpt.so /usr/lib/libcudackpt.so
+COPY --from=builder /src/build/cudackpt /usr/bin/cudackpt
+USER cudackpt
+ENV CUDACKPT_IMAGE_ROOT=/var/lib/cudackpt
+ENV CUDACKPT_RUN_DIR=/run/cudackpt
+WORKDIR /var/lib/cudackpt
+ENTRYPOINT ["/usr/bin/cudackpt"]
