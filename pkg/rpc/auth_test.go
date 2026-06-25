@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"encoding/binary"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -64,7 +65,7 @@ func handleMockConn(c net.Conn, secret string) {
 	defer c.Close()
 	if secret != "" {
 		var op [4]byte
-		if _, err := c.Read(op[:]); err != nil {
+		if _, err := io.ReadFull(c, op[:]); err != nil {
 			return
 		}
 		if binary.BigEndian.Uint32(op[:]) != OpAuth {
@@ -76,7 +77,7 @@ func handleMockConn(c net.Conn, secret string) {
 			return
 		}
 		buf := make([]byte, n)
-		if _, err := c.Read(buf); err != nil {
+		if _, err := io.ReadFull(c, buf); err != nil {
 			return
 		}
 		if string(buf) != secret {
@@ -85,22 +86,27 @@ func handleMockConn(c net.Conn, secret string) {
 		}
 		_ = writeU32(c, 0)
 	}
-	var op [4]byte
-	if _, err := c.Read(op[:]); err != nil {
-		return
-	}
-	switch binary.BigEndian.Uint32(op[:]) {
-	case OpPing, OpFreeze, OpResume:
-		_ = writeU32(c, 0)
-	case OpStatus:
-		_ = writeU32(c, 4)
-	case OpStats:
-		_ = writeU32(c, 0)
-		for _, n := range []uint32{2, 4096, 0, 0, 1, 0, 0, 0, 0, 0, 4} {
-			_ = writeU32(c, n)
+	for {
+		var op [4]byte
+		if _, err := io.ReadFull(c, op[:]); err != nil {
+			return
 		}
-	default:
-		_ = writeU32(c, 1)
+		switch binary.BigEndian.Uint32(op[:]) {
+		case OpPing, OpFreeze, OpResume:
+			_ = writeU32(c, 0)
+		case OpStatus:
+			_ = writeU32(c, 4)
+		case OpStats:
+			_ = writeU32(c, 0)
+			for _, n := range []uint32{2, 4096, 0, 0, 1, 0, 0, 0, 0, 0, 4} {
+				_ = writeU32(c, n)
+			}
+		case OpQuit:
+			_ = writeU32(c, 0)
+			return
+		default:
+			_ = writeU32(c, 1)
+		}
 	}
 }
 

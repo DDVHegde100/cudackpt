@@ -12,7 +12,8 @@ docker run --rm --entrypoint /bin/sh "$TAG" -c '
   test -f /usr/lib/libcudackpt.so
   id cudackpt >/dev/null
   /usr/bin/cudackpt ps
-  /usr/bin/criu --version >/dev/null
+  command -v criu >/dev/null
+  criu --version >/dev/null
 '
 
 docker run --rm --entrypoint /usr/bin/cudackpt "$TAG" health >/dev/null || true
