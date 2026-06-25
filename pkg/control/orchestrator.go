@@ -123,26 +123,38 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 		jlog.Error("restore_criu", err, map[string]any{"dir": imagePath})
 		return 0, ckpterr.Wrap(ckpterr.CRIU, "restore", err)
 	}
-	if pid == 0 {
-		pids, lerr := ListShims(o.cfg.RunDir)
-		if lerr == nil && len(pids) > 0 {
-			pid = pids[0]
-		}
+	if pid > 0 {
+		_ = writeRestoreHandoff(imagePath, pid)
+	} else if filePID := readRestoredPID(imagePath); filePID > 0 {
+		pid = filePID
 	}
+	jlog.Info("restore_criu_ok", map[string]any{"dir": imagePath, "pid": pid})
 	deadline := time.Now().Add(o.cfg.RestoreTimeout)
+	attempt := 0
 	for time.Now().Before(deadline) {
+		attempt++
 		pids, lerr := o.sortedShims()
 		if lerr != nil {
-			time.Sleep(o.cfg.ShimPoll)
+			time.Sleep(restorePollDelay(attempt, o.cfg.RetryBackoff))
 			continue
 		}
-		for _, try := range restoreCandidates(pid, pids) {
+		target := resolveRestorePID(imagePath, pid, pids)
+		if target > 0 && !shimSocketReady(o.cfg.RunDir, target) {
+			jlog.Info("restore_wait_shim", map[string]any{"pid": target, "attempt": attempt})
+			time.Sleep(restorePollDelay(attempt, o.cfg.RetryBackoff))
+			continue
+		}
+		for _, try := range restoreCandidates(target, pids) {
+			if !shimSocketReady(o.cfg.RunDir, try) {
+				continue
+			}
 			if got, rerr := o.tryShimRestore(imagePath, try); rerr == nil {
-				jlog.Info("restore_ok", map[string]any{"pid": got, "dir": imagePath})
+				_ = writeRestoreHandoff(imagePath, got)
+				jlog.Info("restore_ok", map[string]any{"pid": got, "dir": imagePath, "attempt": attempt})
 				return got, nil
 			}
 		}
-		time.Sleep(o.cfg.ShimPoll)
+		time.Sleep(restorePollDelay(attempt, o.cfg.RetryBackoff))
 	}
 	err = ckpterr.E(ckpterr.RPC, "shim not ready after criu restore")
 	jlog.Error("restore_fail", err, map[string]any{"dir": imagePath})
