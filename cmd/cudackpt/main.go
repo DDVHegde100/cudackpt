@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
+	"github.com/dhruvhegde/cudackpt/pkg/bench"
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/control"
 	"github.com/dhruvhegde/cudackpt/pkg/health"
@@ -16,7 +20,7 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
-	cfg := config.Default()
+	cfg := config.Load()
 	orc := control.New(cfg)
 	switch os.Args[1] {
 	case "checkpoint":
@@ -32,7 +36,7 @@ func main() {
 		if len(os.Args) > 3 {
 			out = os.Args[3]
 		}
-		if err := orc.Checkpoint(pid, out); err != nil {
+		if err := orc.EnqueueCheckpoint(pid, out); err != nil {
 			die(err)
 		}
 		fmt.Println("checkpoint ok")
@@ -75,6 +79,49 @@ func main() {
 		if os.Args[1] != "status" {
 			fmt.Printf("%s ok\n", os.Args[1])
 		}
+	case "watch":
+		if len(os.Args) < 3 {
+			usage()
+			os.Exit(2)
+		}
+		pid, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			die(err)
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer cancel()
+		if err := control.WatchShim(orc, pid, cfg.ShimPoll, ctx.Done()); err != nil {
+			die(err)
+		}
+	case "bench":
+		if len(os.Args) < 3 {
+			usage()
+			os.Exit(2)
+		}
+		pid, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			die(err)
+		}
+		n := 100
+		if len(os.Args) > 3 {
+			n, err = strconv.Atoi(os.Args[3])
+			if err != nil {
+				die(err)
+			}
+		}
+		ping := bench.Ping(pid, n)
+		st := bench.Status(pid, n)
+		fmt.Print(bench.FormatTable(ping, st))
+	case "diff":
+		if len(os.Args) < 4 {
+			usage()
+			os.Exit(2)
+		}
+		rep, err := control.CompareImages(os.Args[2], os.Args[3])
+		if err != nil {
+			die(err)
+		}
+		fmt.Print(control.FormatDrift(rep))
 	case "snapshot":
 		if len(os.Args) < 4 {
 			usage()
@@ -175,7 +222,13 @@ func main() {
 			st.State, st.AllocCount, st.TotalBytes, st.StreamCount, st.ModuleCount,
 			st.SymbolCount, st.EventCount, st.CtxCount, st.UnsupportedCode)
 	case "health":
-		st := health.Probe()
+		deep := len(os.Args) > 2 && os.Args[2] == "-d"
+		var st health.Status
+		if deep {
+			st = health.DeepProbe()
+		} else {
+			st = health.Probe()
+		}
 		fmt.Print(health.Format(st))
 		if !st.OK {
 			os.Exit(1)
@@ -190,6 +243,9 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "usage: cudackpt checkpoint <pid> [dir]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt restore <image>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt freeze|ping|resume|status <pid>\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt watch <pid>\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt bench <pid> [count]\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt diff <image-a> <image-b>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt snapshot <pid> <dir>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt gpu-restore <pid> <dir>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt list [root]\n")
@@ -198,7 +254,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "       cudackpt validate <image>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt report <image>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt stats <pid>\n")
-	fmt.Fprintf(os.Stderr, "       cudackpt health\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt health [-d]\n")
 }
 
 func die(err error) {
