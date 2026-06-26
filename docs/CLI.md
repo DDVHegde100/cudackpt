@@ -55,9 +55,9 @@ Print shim state name and numeric code.
 
 Print tracker counters (allocs, bytes, streams, modules, unsupported code).
 
-### `cudackpt watch <pid>`
+### `cudackpt watch <pid> [--until-running] [--timeout <duration>]`
 
-Poll shim status until running or context cancelled (Ctrl+C).
+Poll shim status until interrupted (Ctrl+C), or exit when `--until-running` sees `running`/`restored`, or fail on `--timeout`.
 
 ## Image inspection
 
@@ -111,7 +111,7 @@ Serve Prometheus metrics on `/metrics` (default `:9090`). Blocks until interrupt
 
 ### `cudackpt agent [--listen addr]`
 
-Long-running daemon: metrics HTTP server, periodic gauge refresh, optional scheduled GC via `CUDACKPT_AGENT_GC_INTERVAL`.
+Long-running daemon: metrics HTTP server, periodic gauge refresh, optional scheduled GC via `CUDACKPT_AGENT_GC_INTERVAL`. GC failures increment `cudackpt_gc_errors_total` and emit JSON log events.
 
 Systemd unit: `cudackpt-agent.service`.
 
@@ -126,7 +126,7 @@ List PIDs with active shim sockets. `-v` includes state names.
 | Variable | Purpose |
 |----------|---------|
 | `CUDACKPT_IMAGE_ROOT` | Checkpoint storage root |
-| `CUDACKPT_RUN_DIR` | Shim socket directory |
+| `CUDACKPT_RUN_DIR` | Shim socket directory (must match in target process and CLI) |
 | `CUDACKPT_CONFIG` | Config file path |
 | `CUDACKPT_LOG` | JSON log output file |
 | `CUDACKPT_RPC_SECRET` | Shared secret for shim RPC auth |

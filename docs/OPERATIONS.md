@@ -61,7 +61,7 @@ The restore pipeline:
 Monitor restore:
 
 ```bash
-cudackpt watch <new-pid>
+cudackpt watch <new-pid> --until-running --timeout 60s
 cudackpt stats <new-pid>
 ```
 
@@ -126,13 +126,15 @@ docker build -f Dockerfile.prod -t cudackpt:prod .
 | Variable | Purpose |
 |----------|---------|
 | `CUDACKPT_IMAGE_ROOT` | Checkpoint storage root |
-| `CUDACKPT_RUN_DIR` | Shim socket directory |
+| `CUDACKPT_RUN_DIR` | Shim socket directory (must match in target process and CLI) |
 | `CUDACKPT_CONFIG` | Config file path |
 | `CUDACKPT_COMPRESS` | Enable zstd compression post-snapshot |
 | `CUDACKPT_SPARSE` | Enable sparse zero-page encoding |
 | `CUDACKPT_DEDUP` | Enable CAS deduplication |
 | `CUDACKPT_PARENT_IMAGE` | Parent path for delta snapshots |
 | `CUDACKPT_LOG` | JSON log output file |
+
+Shim IPC sockets are created mode `0660` under `run_dir`. The `cudackpt` system group (see `cudackpt-run.service`) can dial sockets without root when the target process runs as a member of that group.
 
 ## Failure triage
 
