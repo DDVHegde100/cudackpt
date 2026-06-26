@@ -7,7 +7,7 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/mkdir -p /run/cudackpt
 ExecStart=/bin/chmod 0755 /run/cudackpt
-ExecStart=/bin/chown root:root /run/cudackpt
+ExecStart=/bin/chown root:cudackpt /run/cudackpt
 
 [Install]
 WantedBy=multi-user.target
