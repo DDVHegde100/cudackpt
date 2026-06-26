@@ -1,0 +1,10 @@
+# cudackpt configuration
+# Copy to /etc/cudackpt.conf and adjust for your deployment.
+# Environment variables override these values when set.
+
+image_root=/var/lib/cudackpt
+run_dir=/run/cudackpt
+restore_timeout=60s
+shim_poll=200ms
+max_retries=3
+retry_backoff=500ms
