@@ -48,6 +48,7 @@ static char g_image_dir[512];
 static volatile sig_atomic_t g_sigckpt = 0;
 static char g_rpc_secret[256];
 static size_t g_rpc_secret_len = 0;
+static char g_run_dir[256] = "/run/cudackpt";
 
 extern int ckpt_snapshot_write(const char* dir, ChunkEntry* entries, int* count);
 extern int ckpt_restore_load(const char* dir, ChunkEntry* entries, int max, int* count);
@@ -222,13 +223,18 @@ static void sig_handler(int sig) {
 }
 
 static void ensure_run_dir() {
-  mkdir("/run/cudackpt", 0755);
+  const char* env = getenv("CUDACKPT_RUN_DIR");
+  if (env && env[0]) {
+    strncpy(g_run_dir, env, sizeof(g_run_dir) - 1);
+    g_run_dir[sizeof(g_run_dir) - 1] = 0;
+  }
+  mkdir(g_run_dir, 0755);
 }
 
 __attribute__((constructor)) static void ckpt_ipc_init() {
   ensure_run_dir();
   char path[256];
-  snprintf(path, sizeof(path), "/run/cudackpt/%d.sock", getpid());
+  snprintf(path, sizeof(path), "%s/%d.sock", g_run_dir, getpid());
   unlink(path);
   g_sock = socket(AF_UNIX, SOCK_STREAM, 0);
   if (g_sock < 0) return;
@@ -241,6 +247,7 @@ __attribute__((constructor)) static void ckpt_ipc_init() {
     g_sock = -1;
     return;
   }
+  chmod(path, 0660);
   listen(g_sock, 8);
   pthread_t tid;
   pthread_create(&tid, NULL, server_thread, NULL);
