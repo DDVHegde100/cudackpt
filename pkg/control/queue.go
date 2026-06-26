@@ -23,27 +23,41 @@ func (o *Orchestrator) retryPolicy() RetryPolicy {
 	return p
 }
 
-func (o *Orchestrator) CheckpointWithRetry(pid int, out string, policy RetryPolicy) error {
+func applyRetry(policy RetryPolicy, attemptFn func(int) error, stopRetry func(error) bool) error {
 	if policy.MaxAttempts <= 0 {
-		policy = o.retryPolicy()
+		policy.MaxAttempts = 1
+	}
+	if policy.Backoff <= 0 {
+		policy.Backoff = 500 * time.Millisecond
 	}
 	var last error
 	for attempt := 1; attempt <= policy.MaxAttempts; attempt++ {
-		jlog.Info("checkpoint_attempt", map[string]any{"pid": pid, "attempt": attempt})
-		err := o.Checkpoint(pid, out)
+		err := attemptFn(attempt)
 		if err == nil {
 			return nil
 		}
 		last = err
-		if attempt == policy.MaxAttempts {
-			break
-		}
-		if ce, ok := err.(*ckpterr.Error); ok && ce.Code == ckpterr.Unsupported {
+		if attempt == policy.MaxAttempts || stopRetry(err) {
 			break
 		}
 		time.Sleep(policy.Backoff)
 	}
 	return last
+}
+
+func (o *Orchestrator) CheckpointWithRetry(pid int, out string, policy RetryPolicy) error {
+	if policy.MaxAttempts <= 0 {
+		policy = o.retryPolicy()
+	}
+	return applyRetry(policy, func(attempt int) error {
+		jlog.Info("checkpoint_attempt", map[string]any{"pid": pid, "attempt": attempt})
+		return o.Checkpoint(pid, out)
+	}, func(err error) bool {
+		if ce, ok := err.(*ckpterr.Error); ok && ce.Code == ckpterr.Unsupported {
+			return true
+		}
+		return false
+	})
 }
 
 func (o *Orchestrator) EnqueueCheckpoint(pid int, out string) error {
