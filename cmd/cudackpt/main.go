@@ -183,9 +183,27 @@ func main() {
 		if err != nil {
 			die(err)
 		}
+		opts := control.WatchOptions{}
+		for i := 3; i < len(os.Args); i++ {
+			switch os.Args[i] {
+			case "--until-running":
+				opts.UntilRunning = true
+			case "--timeout":
+				if i+1 >= len(os.Args) {
+					die(fmt.Errorf("--timeout requires duration"))
+				}
+				i++
+				opts.Timeout, err = time.ParseDuration(os.Args[i])
+				if err != nil {
+					die(err)
+				}
+			default:
+				die(fmt.Errorf("unknown flag: %s", os.Args[i]))
+			}
+		}
 		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
-		if err := control.WatchShim(orc, pid, cfg.ShimPoll, ctx.Done()); err != nil {
+		if err := control.WatchShimWith(orc, pid, cfg.ShimPoll, opts, ctx.Done()); err != nil {
 			die(err)
 		}
 	case "bench":
@@ -204,8 +222,8 @@ func main() {
 				die(err)
 			}
 		}
-		ping := bench.Ping(pid, n)
-		st := bench.Status(pid, n)
+		ping := bench.Ping(cfg.RunDir, pid, n)
+		st := bench.Status(cfg.RunDir, pid, n)
 		fmt.Print(bench.FormatTable(ping, st))
 	case "diff":
 		if len(os.Args) < 4 {
@@ -320,9 +338,9 @@ func main() {
 		deep := len(os.Args) > 2 && os.Args[2] == "-d"
 		var st health.Status
 		if deep {
-			st = health.DeepProbe()
+			st = health.DeepProbeWith(cfg.RunDir)
 		} else {
-			st = health.Probe()
+			st = health.ProbeWith(cfg.RunDir)
 		}
 		fmt.Print(health.Format(st))
 		if !st.OK {

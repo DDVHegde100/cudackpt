@@ -16,11 +16,11 @@ type Result struct {
 	Errors   int
 }
 
-func Ping(pid, count int) Result {
+func Ping(runDir string, pid, count int) Result {
 	start := time.Now()
 	errs := 0
 	for i := 0; i < count; i++ {
-		cli, err := rpc.Dial(pid)
+		cli, err := rpc.DialRunDir(runDir, pid)
 		if err != nil {
 			errs++
 			continue
@@ -34,10 +34,10 @@ func Ping(pid, count int) Result {
 	return Result{Op: "ping", Count: count, Elapsed: elapsed, PerOpUs: usPerOp(count, elapsed), Errors: errs}
 }
 
-func Status(pid, count int) Result {
+func Status(runDir string, pid, count int) Result {
 	start := time.Now()
 	errs := 0
-	cli, err := rpc.Dial(pid)
+	cli, err := rpc.DialRunDir(runDir, pid)
 	if err != nil {
 		return Result{Op: "status", Count: count, Errors: count}
 	}

@@ -6,6 +6,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
+	"strconv"
 )
 
 const (
@@ -36,6 +38,13 @@ type Client struct {
 	conn net.Conn
 }
 
+func ShimSocketPath(runDir string, pid int) string {
+	if runDir == "" {
+		runDir = "/run/cudackpt"
+	}
+	return filepath.Join(runDir, strconv.Itoa(pid)+".sock")
+}
+
 func DialPath(path string) (*Client, error) {
 	c, err := net.Dial("unix", path)
 	if err != nil {
@@ -48,8 +57,12 @@ func DialPath(path string) (*Client, error) {
 	return &Client{conn: c}, nil
 }
 
+func DialRunDir(runDir string, pid int) (*Client, error) {
+	return DialPath(ShimSocketPath(runDir, pid))
+}
+
 func Dial(pid int) (*Client, error) {
-	return DialPath(fmt.Sprintf("/run/cudackpt/%d.sock", pid))
+	return DialRunDir("", pid)
 }
 
 func (c *Client) Close() error {
