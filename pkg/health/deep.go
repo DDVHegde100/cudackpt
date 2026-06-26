@@ -7,11 +7,15 @@ import (
 )
 
 func DeepProbe() Status {
+	return DeepProbeWith("")
+}
+
+func DeepProbeWith(runDir string) Status {
 	var checks []Check
 	checks = append(checks, probeOS())
 	checks = append(checks, probeGPU())
 	checks = append(checks, probeCRIU())
-	checks = append(checks, probeRunDir())
+	checks = append(checks, probeRunDir(runDir))
 	checks = append(checks, probeNvidiaDriver())
 	checks = append(checks, probeCRIUFeatures())
 	checks = append(checks, probeCaps())

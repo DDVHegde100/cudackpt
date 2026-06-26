@@ -19,11 +19,15 @@ type Check struct {
 }
 
 func Probe() Status {
+	return ProbeWith("")
+}
+
+func ProbeWith(runDir string) Status {
 	var checks []Check
 	checks = append(checks, probeOS())
 	checks = append(checks, probeGPU())
 	checks = append(checks, probeCRIU())
-	checks = append(checks, probeRunDir())
+	checks = append(checks, probeRunDir(runDir))
 	ok := true
 	for _, c := range checks {
 		if !c.OK {
@@ -60,12 +64,14 @@ func probeCRIU() Check {
 	return Check{Name: "criu", OK: true, Detail: "check passed"}
 }
 
-func probeRunDir() Check {
-	dir := "/run/cudackpt"
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+func probeRunDir(runDir string) Check {
+	if runDir == "" {
+		runDir = "/run/cudackpt"
+	}
+	if err := os.MkdirAll(runDir, 0o755); err != nil {
 		return Check{Name: "run_dir", OK: false, Detail: err.Error()}
 	}
-	return Check{Name: "run_dir", OK: true, Detail: dir}
+	return Check{Name: "run_dir", OK: true, Detail: runDir}
 }
 
 func Format(s Status) string {
