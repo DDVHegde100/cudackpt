@@ -105,6 +105,7 @@ const (
 	RestoreFailuresTotal  = "cudackpt_restore_failures_total"
 	RollbacksTotal        = "cudackpt_rollbacks_total"
 	GCRemovedTotal        = "cudackpt_gc_removed_total"
+	GCErrorsTotal         = "cudackpt_gc_errors_total"
 	ImagesGauge           = "cudackpt_images"
 	ShimsGauge            = "cudackpt_shims"
 )

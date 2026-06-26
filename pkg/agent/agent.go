@@ -9,6 +9,7 @@ import (
 
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/control"
+	jlog "github.com/dhruvhegde/cudackpt/pkg/log"
 	"github.com/dhruvhegde/cudackpt/pkg/metrics"
 )
 
@@ -114,6 +115,8 @@ func runGC(opts Options) {
 		PinFile: opts.PinFile,
 	}, false)
 	if err != nil {
+		jlog.Error("agent_gc", err, map[string]any{"root": opts.Config.ImageRoot})
+		metrics.Default.Inc(metrics.GCErrorsTotal)
 		return
 	}
 	if len(removed) > 0 {

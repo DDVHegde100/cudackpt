@@ -28,6 +28,23 @@ func TestRefreshGauges(t *testing.T) {
 	}
 }
 
+func TestRunGCErrorIncrementsMetric(t *testing.T) {
+	metrics.Default.Set(metrics.GCErrorsTotal, 0)
+	root := t.TempDir()
+	pin := filepath.Join(root, "noperm")
+	if err := os.WriteFile(pin, []byte("/var/lib/cudackpt/ckpt-1\n"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	opts := OptionsFromConfig(config.Config{ImageRoot: root, RunDir: root})
+	opts.PinFile = pin
+	opts.GCMaxAge = time.Hour
+	runGC(opts)
+	counters, _ := metrics.Default.Snapshot()
+	if counters[metrics.GCErrorsTotal] != 1 {
+		t.Fatalf("errors=%v", counters[metrics.GCErrorsTotal])
+	}
+}
+
 func TestOptionsFromConfig(t *testing.T) {
 	t.Setenv("CUDACKPT_METRICS_ADDR", "127.0.0.1:19190")
 	t.Setenv("CUDACKPT_AGENT_GC_INTERVAL", "1h")
