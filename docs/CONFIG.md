@@ -48,6 +48,14 @@ retry_backoff=500ms
 | `CUDACKPT_MAX_RETRIES` | `max_retries` |
 | `CUDACKPT_RETRY_BACKOFF` | `retry_backoff` |
 
+Unknown keys and invalid values emit warnings to stderr when the config file is loaded.
+
+## Shim-only environment
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CUDACKPT_SOCKET_GROUP` | `cudackpt` | Group owning shim IPC sockets (`0660`) |
+
 ## Agent-specific environment
 
 These are read by `cudackpt agent` in addition to the shared config:

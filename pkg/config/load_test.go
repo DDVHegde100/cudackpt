@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,5 +23,28 @@ func TestLoadFileAndEnvOverride(t *testing.T) {
 	}
 	if cfg.RunDir != "/run/test" || cfg.MaxRetries != 5 || cfg.RetryBackoff != 2*time.Second {
 		t.Fatalf("file load got %+v", cfg)
+	}
+}
+
+func TestLoadWithWarningsUnknownKey(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cudackpt.conf")
+	body := "image-root=/bad\nrestore_timeout=not-a-duration\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CUDACKPT_CONFIG", path)
+	r := LoadWithWarnings()
+	if len(r.Warnings) < 2 {
+		t.Fatalf("warnings=%v", r.Warnings)
+	}
+	found := false
+	for _, w := range r.Warnings {
+		if strings.Contains(w, "unknown config key") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("warnings=%v", r.Warnings)
 	}
 }
