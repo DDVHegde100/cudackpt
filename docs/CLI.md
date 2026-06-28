@@ -115,6 +115,10 @@ Long-running daemon: metrics HTTP server (`/metrics`), readiness probe (`GET /he
 
 Systemd unit: `cudackpt-agent.service`.
 
+### `cudackpt serve`
+
+One-shot socket-activation helper for systemd. Reads a command from stdin (default `ps`) and writes shim listing to stdout. Used by `cudackpt@.service`.
+
 ### `cudackpt completion bash|zsh`
 
 Emit shell completion script to stdout. Install:

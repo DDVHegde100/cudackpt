@@ -67,10 +67,12 @@ if command -v deb-systemd-invoke >/dev/null 2>&1; then
   deb-systemd-invoke daemon-reload || true
   deb-systemd-invoke enable cudackpt-run.service || true
   deb-systemd-invoke start cudackpt-run.service || true
+  deb-systemd-invoke enable cudackpt.socket || true
 elif command -v systemctl >/dev/null 2>&1; then
   systemctl daemon-reload || true
   systemctl enable cudackpt-run.service || true
   systemctl start cudackpt-run.service || true
+  systemctl enable cudackpt.socket || true
 fi
 EOF
 

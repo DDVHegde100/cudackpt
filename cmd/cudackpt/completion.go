@@ -1,16 +1,43 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"strings"
+
+	"github.com/dhruvhegde/cudackpt/pkg/config"
+	"github.com/dhruvhegde/cudackpt/pkg/control"
 )
 
-var completionCommands = []string{
-	"checkpoint", "restore", "rollback", "promote", "gc", "metrics", "agent",
-	"freeze", "ping", "resume", "status", "watch", "bench", "diff", "snapshot",
-	"gpu-restore", "list", "ps", "inspect", "validate", "report", "stats",
-	"health", "version", "completion",
+func runServe(cfg config.Config, orc *control.Orchestrator) error {
+	in, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return err
+	}
+	cmd := strings.TrimSpace(string(in))
+	if cmd == "" {
+		cmd = "ps"
+	}
+	switch cmd {
+	case "ps":
+		pids, err := control.ListShims(cfg.RunDir)
+		if err != nil {
+			return err
+		}
+		for _, p := range pids {
+			st, serr := orc.Status(p)
+			if serr != nil {
+				fmt.Printf("%d offline\n", p)
+				continue
+			}
+			fmt.Printf("%d %s\n", p, control.StateName(st))
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown serve command %q", cmd)
+	}
 }
 
 func emitCompletion(shell string, w io.Writer) error {
@@ -25,46 +52,53 @@ func emitCompletion(shell string, w io.Writer) error {
 }
 
 func emitBashCompletion(w io.Writer) error {
-	fmt.Fprintln(w, `# cudackpt bash completion`)
-	fmt.Fprintln(w, `_cudackpt_completions() {`)
-	fmt.Fprintln(w, `  local cur prev`)
-	fmt.Fprintln(w, `  cur="${COMP_WORDS[COMP_CWORD]}"`)
-	fmt.Fprintln(w, `  prev="${COMP_WORDS[COMP_CWORD-1]}"`)
-	fmt.Fprintln(w, `  local commands="`+strings.Join(completionCommands, " ")+`"`)
-	fmt.Fprintln(w, `  local flags="--until-running --timeout --listen --dry-run --stop --pin --root --older-than"`)
-	fmt.Fprintln(w, `  if [[ ${COMP_CWORD} -eq 1 ]]; then`)
-	fmt.Fprintln(w, `    COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )`)
-	fmt.Fprintln(w, `    return`)
-	fmt.Fprintln(w, `  fi`)
-	fmt.Fprintln(w, `  case "${prev}" in`)
-	fmt.Fprintln(w, `    watch|bench|checkpoint|freeze|ping|resume|status|snapshot|gpu-restore|stats|rollback)`)
-	fmt.Fprintln(w, `      ;;`)
-	fmt.Fprintln(w, `    completion)`)
-	fmt.Fprintln(w, `      COMPREPLY=( $(compgen -W "bash zsh" -- "${cur}") )`)
-	fmt.Fprintln(w, `      return`)
-	fmt.Fprintln(w, `    *)`)
-	fmt.Fprintln(w, `      COMPREPLY=( $(compgen -W "${flags}" -- "${cur}") )`)
-	fmt.Fprintln(w, `      ;;`)
-	fmt.Fprintln(w, `  esac`)
-	fmt.Fprintln(w, `}`)
-	fmt.Fprintln(w, `complete -F _cudackpt_completions cudackpt`)
-	return nil
+	sc := bufio.NewWriter(w)
+	fmt.Fprintln(sc, `# cudackpt bash completion`)
+	fmt.Fprintln(sc, `_cudackpt_completions() {`)
+	fmt.Fprintln(sc, `  local cur prev`)
+	fmt.Fprintln(sc, `  cur="${COMP_WORDS[COMP_CWORD]}"`)
+	fmt.Fprintln(sc, `  prev="${COMP_WORDS[COMP_CWORD-1]}"`)
+	fmt.Fprintln(sc, `  local commands="`+strings.Join(completionCommands, " ")+`"`)
+	fmt.Fprintln(sc, `  local flags="--until-running --timeout --listen --dry-run --stop --pin --root --older-than"`)
+	fmt.Fprintln(sc, `  if [[ ${COMP_CWORD} -eq 1 ]]; then`)
+	fmt.Fprintln(sc, `    COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )`)
+	fmt.Fprintln(sc, `    return`)
+	fmt.Fprintln(sc, `  fi`)
+	fmt.Fprintln(sc, `  case "${prev}" in`)
+	fmt.Fprintln(sc, `    completion)`)
+	fmt.Fprintln(sc, `      COMPREPLY=( $(compgen -W "bash zsh" -- "${cur}") )`)
+	fmt.Fprintln(sc, `      return`)
+	fmt.Fprintln(sc, `    *)`)
+	fmt.Fprintln(sc, `      COMPREPLY=( $(compgen -W "${flags}" -- "${cur}") )`)
+	fmt.Fprintln(sc, `      ;;`)
+	fmt.Fprintln(sc, `  esac`)
+	fmt.Fprintln(sc, `}`)
+	fmt.Fprintln(sc, `complete -F _cudackpt_completions cudackpt`)
+	return sc.Flush()
 }
 
 func emitZshCompletion(w io.Writer) error {
-	fmt.Fprintln(w, `#compdef cudackpt`)
-	fmt.Fprintln(w, `_cudackpt() {`)
-	fmt.Fprintln(w, `  local -a commands flags`)
-	fmt.Fprintln(w, `  commands=(`+strings.Join(completionCommands, " ")+`)`)
-	fmt.Fprintln(w, `  flags=(--until-running --timeout --listen --dry-run --stop --pin --root --older-than)`)
-	fmt.Fprintln(w, `  if (( CURRENT == 2 )); then`)
-	fmt.Fprintln(w, `    _describe command commands`)
-	fmt.Fprintln(w, `  elif [[ ${words[2]} == completion ]]; then`)
-	fmt.Fprintln(w, `    _describe shell 'bash zsh'`)
-	fmt.Fprintln(w, `  else`)
-	fmt.Fprintln(w, `    _describe flag flags`)
-	fmt.Fprintln(w, `  fi`)
-	fmt.Fprintln(w, `}`)
-	fmt.Fprintln(w, `_cudackpt`)
-	return nil
+	sc := bufio.NewWriter(w)
+	fmt.Fprintln(sc, `#compdef cudackpt`)
+	fmt.Fprintln(sc, `_cudackpt() {`)
+	fmt.Fprintln(sc, `  local -a commands flags`)
+	fmt.Fprintln(sc, `  commands=(`+strings.Join(completionCommands, " ")+`)`)
+	fmt.Fprintln(sc, `  flags=(--until-running --timeout --listen --dry-run --stop --pin --root --older-than)`)
+	fmt.Fprintln(sc, `  if (( CURRENT == 2 )); then`)
+	fmt.Fprintln(sc, `    _describe command commands`)
+	fmt.Fprintln(sc, `  elif [[ ${words[2]} == completion ]]; then`)
+	fmt.Fprintln(sc, `    _describe shell 'bash zsh'`)
+	fmt.Fprintln(sc, `  else`)
+	fmt.Fprintln(sc, `    _describe flag flags`)
+	fmt.Fprintln(sc, `  fi`)
+	fmt.Fprintln(sc, `}`)
+	fmt.Fprintln(sc, `_cudackpt`)
+	return sc.Flush()
+}
+
+var completionCommands = []string{
+	"checkpoint", "restore", "rollback", "promote", "gc", "metrics", "agent", "serve",
+	"freeze", "ping", "resume", "status", "watch", "bench", "diff", "snapshot",
+	"gpu-restore", "list", "ps", "inspect", "validate", "report", "stats",
+	"health", "version", "completion",
 }

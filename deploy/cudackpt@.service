@@ -4,11 +4,11 @@ Requires=cudackpt.socket
 After=cudackpt-run.service
 
 [Service]
-Type=simple
+Type=oneshot
 User=root
 Group=cudackpt
 Environment=CUDACKPT_RUN_DIR=/run/cudackpt
-ExecStart=/usr/bin/cudackpt ps -v
+ExecStart=/usr/bin/cudackpt serve
 StandardInput=socket
 StandardOutput=journal
 StandardError=journal
