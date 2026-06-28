@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -241,6 +242,14 @@ static void ensure_run_dir() {
   mkdir(g_run_dir, 0755);
 }
 
+static void chown_socket_group(int fd) {
+  const char* grp = getenv("CUDACKPT_SOCKET_GROUP");
+  if (!grp || !grp[0]) grp = "cudackpt";
+  struct group* g = getgrnam(grp);
+  if (!g) return;
+  fchown(fd, (uid_t)-1, g->gr_gid);
+}
+
 __attribute__((constructor)) static void ckpt_ipc_init() {
   ensure_run_dir();
   char path[256];
@@ -258,6 +267,7 @@ __attribute__((constructor)) static void ckpt_ipc_init() {
     return;
   }
   chmod(path, 0660);
+  chown_socket_group(g_sock);
   listen(g_sock, 8);
   pthread_t tid;
   pthread_create(&tid, NULL, server_thread, NULL);

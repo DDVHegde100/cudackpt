@@ -144,7 +144,20 @@ docker build -f Dockerfile.prod -t cudackpt:prod .
 | `CUDACKPT_PARENT_IMAGE` | Parent path for delta snapshots |
 | `CUDACKPT_LOG` | JSON log output file |
 
-Shim IPC sockets are created mode `0660` under `run_dir`. The `cudackpt` system group (see `cudackpt-run.service`) can dial sockets without root when the target process runs as a member of that group.
+Shim IPC sockets are created mode `0660` under `run_dir`, owned by the process UID and `CUDACKPT_SOCKET_GROUP` (default `cudackpt`). The `cudackpt` system group can dial sockets without root when the target process runs as a member of that group.
+
+## Metrics semantics
+
+| Counter | Meaning |
+|---------|---------|
+| `cudackpt_checkpoints_total` | Successful checkpoints (one per final success, including after retries) |
+| `cudackpt_checkpoint_failures_total` | Failed checkpoint operations (one per failed `checkpoint` or exhausted retry) |
+| `cudackpt_rollbacks_total` | Successful rollbacks |
+| `cudackpt_gc_errors_total` | Agent image GC failures |
+
+## Control socket
+
+`cudackpt.socket` listens on `/run/cudackpt/control.sock`. Connecting triggers `cudackpt@.service`, which runs `cudackpt serve` and lists shim PIDs on the accepted connection.
 
 ## Failure triage
 
