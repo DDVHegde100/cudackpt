@@ -371,7 +371,9 @@ func main() {
 		}
 		agent.RefreshGauges(cfg)
 		fmt.Fprintf(os.Stderr, "metrics listening on %s/metrics\n", addr)
-		if err := metrics.Serve(addr, metrics.Default); err != nil {
+		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer cancel()
+		if err := metrics.ServeContext(ctx, addr, metrics.Default); err != nil {
 			die(err)
 		}
 	case "agent":

@@ -1,11 +1,13 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"sort"
 	"sync"
+	"time"
 )
 
 type Registry struct {
@@ -91,11 +93,25 @@ func (r *Registry) Handler() http.Handler {
 }
 
 func Serve(addr string, reg *Registry) error {
+	return ServeContext(context.Background(), addr, reg)
+}
+
+func ServeContext(ctx context.Context, addr string, reg *Registry) error {
 	if reg == nil {
 		reg = Default
 	}
 	srv := &http.Server{Addr: addr, Handler: reg.Handler()}
-	return srv.ListenAndServe()
+	go func() {
+		<-ctx.Done()
+		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shutCtx)
+	}()
+	err := srv.ListenAndServe()
+	if err == http.ErrServerClosed {
+		return nil
+	}
+	return err
 }
 
 const (
