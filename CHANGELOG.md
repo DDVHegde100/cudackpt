@@ -5,6 +5,31 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-28
+
+### Added
+
+- **Shim** — `CUDACKPT_RUN_DIR`, socket mode `0660`, group ownership via `CUDACKPT_SOCKET_GROUP`, per-client IPC worker threads
+- **Control plane** — `DialRunDir`, health `ProbeWith`, config file reference (`docs/CONFIG.md`), config parse warnings
+- **CLI** — `watch --until-running`, shell completion, `cudackpt serve` for systemd socket activation
+- **Agent** — GC error metrics/logging, `GET /health` readiness probe
+- **Packaging** — deb postinst/prerm, example `/etc/cudackpt.conf`, systemd unit enablement
+- **Testing** — ValidateImage, CheckpointWithRetry, WatchShim, pipeline, materialize, auth, and rollback hermetic tests
+- **CI** — golangci-lint, Go race detector
+- **Docs** — vectoradd checkpoint example, CONTRIBUTING/SECURITY/LICENSE
+
+### Fixed
+
+- Checkpoint failure metrics no longer inflate on transient retry errors
+- Mock RPC server handles OpAuth, OpSnapshot, and status sequences for integration tests
+- `cudackpt@.service` socket activation uses `cudackpt serve`
+
+### Known limitations
+
+- Single GPU only; no MIG, NCCL, or CUDA graphs
+- GPU restore correctness is workload-dependent
+- Full e2e validation requires a self-hosted GPU runner
+
 ## [0.1.0] - 2026-06-25
 
 First public release.
@@ -28,4 +53,5 @@ First public release.
 - GPU restore correctness is workload-dependent
 - Full e2e validation requires a self-hosted GPU runner
 
+[0.2.0]: https://github.com/DDVHegde100/cudackpt/releases/tag/v0.2.0
 [0.1.0]: https://github.com/DDVHegde100/cudackpt/releases/tag/v0.1.0
