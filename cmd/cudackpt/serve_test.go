@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,7 +20,7 @@ func TestRunServePs(t *testing.T) {
 		t.Fatal(err)
 	}
 	const pid = 4242
-	sock := filepath.Join(runDir, "4242.sock")
+	sock := filepath.Join(runDir, fmt.Sprintf("%d.sock", pid))
 	stop, err := rpc.ServeMockAt(sock)
 	if err != nil {
 		t.Skip(err)
@@ -52,7 +53,7 @@ func TestRunServePs(t *testing.T) {
 	if _, err := io.Copy(&buf, rOut); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(buf.Bytes(), []byte("4242")) {
+	if !bytes.Contains(buf.Bytes(), []byte(fmt.Sprintf("%d", pid))) {
 		t.Fatalf("serve ps output=%q", buf.String())
 	}
 }
@@ -69,7 +70,9 @@ func TestRunServeUnknownCommand(t *testing.T) {
 	if _, err := w.Write([]byte("bogus\n")); err != nil {
 		t.Fatal(err)
 	}
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 	defer func() { os.Stdin = oldIn }()
 	if err := runServe(cfg, orc); err == nil {
 		t.Fatal("expected error for unknown serve command")

@@ -22,7 +22,7 @@ func (o *Orchestrator) Ping(pid int) error {
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Ping(); err != nil {
 		return ckpterr.Wrap(ckpterr.RPC, "ping", err)
 	}
@@ -34,7 +34,7 @@ func (o *Orchestrator) Status(pid int) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	st, err := cli.Status()
 	if err != nil {
 		return 0, ckpterr.Wrap(ckpterr.RPC, "status", err)
@@ -47,7 +47,7 @@ func (o *Orchestrator) Stats(pid int) (rpc.Stats, error) {
 	if err != nil {
 		return rpc.Stats{}, err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	st, err := cli.Stats()
 	if err != nil {
 		return rpc.Stats{}, ckpterr.Wrap(ckpterr.RPC, "stats", err)
@@ -60,7 +60,7 @@ func (o *Orchestrator) Freeze(pid int) error {
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Freeze(); err != nil {
 		return ckpterr.Wrap(ckpterr.RPC, "freeze", err)
 	}
@@ -72,7 +72,7 @@ func (o *Orchestrator) Snapshot(pid int, dir string) error {
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Snapshot(dir); err != nil {
 		return ckpterr.Wrap(ckpterr.CUDA, "snapshot", err)
 	}
@@ -91,7 +91,7 @@ func (o *Orchestrator) GpuRestore(pid int, dir string) error {
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Restore(dir); err != nil {
 		return ckpterr.Wrap(ckpterr.CUDA, "gpu restore", err)
 	}
@@ -103,7 +103,7 @@ func (o *Orchestrator) Resume(pid int) error {
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Resume(); err != nil {
 		return ckpterr.Wrap(ckpterr.RPC, "resume", err)
 	}
@@ -115,7 +115,7 @@ func (o *Orchestrator) tryShimRestore(imagePath string, pid int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Ping(); err != nil {
 		return 0, err
 	}
