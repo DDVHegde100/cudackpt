@@ -33,7 +33,7 @@ jobs:
       - name: build
         run: make
       - name: go test
-        run: go test ./...
+        run: go test -race ./...
       - name: run ${{ matrix.suite }}
         run: ${{ matrix.cmd }}
 
