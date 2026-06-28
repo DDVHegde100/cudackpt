@@ -51,6 +51,7 @@ static volatile sig_atomic_t g_sigckpt = 0;
 static char g_rpc_secret[256];
 static size_t g_rpc_secret_len = 0;
 static char g_run_dir[256] = "/run/cudackpt";
+static char g_sock_path[256];
 
 extern int ckpt_snapshot_write(const char* dir, ChunkEntry* entries, int* count);
 extern int ckpt_restore_load(const char* dir, ChunkEntry* entries, int max, int* count);
@@ -255,6 +256,8 @@ __attribute__((constructor)) static void ckpt_ipc_init() {
   ensure_run_dir();
   char path[256];
   snprintf(path, sizeof(path), "%s/%d.sock", g_run_dir, getpid());
+  strncpy(g_sock_path, path, sizeof(g_sock_path) - 1);
+  g_sock_path[sizeof(g_sock_path) - 1] = 0;
   unlink(path);
   g_sock = socket(AF_UNIX, SOCK_STREAM, 0);
   if (g_sock < 0) return;
@@ -287,6 +290,17 @@ __attribute__((constructor)) static void ckpt_ipc_init() {
     strncpy(g_rpc_secret, sec, sizeof(g_rpc_secret) - 1);
     g_rpc_secret[sizeof(g_rpc_secret) - 1] = 0;
     g_rpc_secret_len = strlen(g_rpc_secret);
+  }
+}
+
+__attribute__((destructor)) static void ckpt_ipc_fini(void) {
+  if (g_sock >= 0) {
+    close(g_sock);
+    g_sock = -1;
+  }
+  if (g_sock_path[0]) {
+    unlink(g_sock_path);
+    g_sock_path[0] = 0;
   }
 }
 
