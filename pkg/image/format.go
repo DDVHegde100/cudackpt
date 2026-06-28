@@ -38,7 +38,7 @@ func WriteManifestFlags(path string, entries []Entry, flags uint16, version uint
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var total uint64
 	for _, e := range entries {
 		total += e.Size
@@ -84,7 +84,7 @@ func ReadManifest(path string) ([]Entry, Header, error) {
 	if err != nil {
 		return nil, Header{}, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var h Header
 	if err := binary.Read(f, binary.LittleEndian, &h); err != nil {
 		return nil, Header{}, err

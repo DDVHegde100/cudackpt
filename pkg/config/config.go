@@ -53,7 +53,7 @@ func LoadWithWarnings() LoadResult {
 	if err != nil {
 		return LoadResult{Config: cfg}
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())

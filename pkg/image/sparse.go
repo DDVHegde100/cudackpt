@@ -25,7 +25,7 @@ func ApplySparse(dir string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var sparse []SparseEntry
 	for _, e := range entries {
 		if e.Size < minZeroRun {
@@ -47,7 +47,7 @@ func ApplySparse(dir string) error {
 	if err != nil {
 		return err
 	}
-	defer sf.Close()
+	defer func() { _ = sf.Close() }()
 	if err := binary.Write(sf, binary.LittleEndian, uint32(sparseMagic)); err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func ReadSparse(path string) ([]SparseEntry, error) {
 		}
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var magic uint32
 	if err := binary.Read(f, binary.LittleEndian, &magic); err != nil {
 		return nil, err

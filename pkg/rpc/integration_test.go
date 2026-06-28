@@ -17,7 +17,7 @@ func TestMockShimRPC(t *testing.T) {
 	if err != nil {
 		t.Skip(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	go func() {
 		for {
 			c, err := ln.Accept()
@@ -31,7 +31,7 @@ func TestMockShimRPC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Ping(); err != nil {
 		t.Fatal(err)
 	}

@@ -16,7 +16,7 @@ func TestAuthenticateRequired(t *testing.T) {
 	if err != nil {
 		t.Skip(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	const secret = "test-secret"
 	go func() {
 		for {
@@ -32,7 +32,7 @@ func TestAuthenticateRequired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Ping(); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestAuthenticateRejectsBadSecret(t *testing.T) {
 	if err != nil {
 		t.Skip(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	go func() {
 		for {
 			c, err := ln.Accept()
@@ -62,7 +62,7 @@ func TestAuthenticateRejectsBadSecret(t *testing.T) {
 }
 
 func handleMockConn(c net.Conn, secret string) {
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	if secret != "" {
 		var op [4]byte
 		if _, err := io.ReadFull(c, op[:]); err != nil {
@@ -120,7 +120,7 @@ func TestAuthenticateSkippedWithoutEnv(t *testing.T) {
 	if err != nil {
 		t.Skip(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	go func() {
 		for {
 			c, err := ln.Accept()
@@ -134,7 +134,7 @@ func TestAuthenticateSkippedWithoutEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Ping(); err != nil {
 		t.Fatal(err)
 	}

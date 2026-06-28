@@ -37,7 +37,7 @@ func emit(level, name string, err error, fields map[string]any) {
 	if p := os.Getenv("CUDACKPT_LOG"); p != "" {
 		if f, oerr := os.OpenFile(p, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); oerr == nil {
 			out = f
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 		}
 	}
 	_, _ = out.Write(append(b, '\n'))

@@ -62,7 +62,7 @@ func WriteDelta(dir, parentDir string) error {
 	if err != nil {
 		return err
 	}
-	defer df.Close()
+	defer func() { _ = df.Close() }()
 	parent := []byte(parentDir)
 	if err := binary.Write(df, binary.LittleEndian, uint32(deltaMagic)); err != nil {
 		return err
@@ -94,7 +94,7 @@ func ApplyDelta(dir string) error {
 		}
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var magic, count, plen uint32
 	if err := binary.Read(f, binary.LittleEndian, &magic); err != nil {
 		return err

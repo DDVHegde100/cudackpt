@@ -57,7 +57,7 @@ func TestVerifyChunkFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	ok, err := VerifyChunk(f, 0, int64(len(payload)), CRC32C(payload))
 	if err != nil || !ok {
 		t.Fatalf("file verify ok=%v err=%v", ok, err)

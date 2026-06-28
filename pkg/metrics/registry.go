@@ -69,12 +69,12 @@ func (r *Registry) WritePrometheus(w io.Writer) {
 	sort.Strings(names)
 	for _, name := range names {
 		if v, ok := counters[name]; ok {
-			fmt.Fprintf(w, "# TYPE %s counter\n", name)
-			fmt.Fprintf(w, "%s %d\n", name, v)
+			_, _ = fmt.Fprintf(w, "# TYPE %s counter\n", name)
+			_, _ = fmt.Fprintf(w, "%s %d\n", name, v)
 		}
 		if v, ok := gauges[name]; ok {
-			fmt.Fprintf(w, "# TYPE %s gauge\n", name)
-			fmt.Fprintf(w, "%s %g\n", name, v)
+			_, _ = fmt.Fprintf(w, "# TYPE %s gauge\n", name)
+			_, _ = fmt.Fprintf(w, "%s %g\n", name, v)
 		}
 	}
 }

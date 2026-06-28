@@ -19,7 +19,7 @@ func TestServeMockWithAuth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	if err := cli.Ping(); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestServeMockFailFreezeUntil(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	for i := 0; i < 2; i++ {
 		if err := cli.Freeze(); err == nil {
 			t.Fatalf("freeze %d should fail", i)

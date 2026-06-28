@@ -24,7 +24,7 @@ func (t *Tier) Spill(name string, data []byte) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	n, err := f.Write(data)
 	return int64(n), err
 }
@@ -35,7 +35,7 @@ func (t *Tier) MmapRead(name string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	st, err := f.Stat()
 	if err != nil {
 		return nil, err

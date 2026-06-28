@@ -18,7 +18,7 @@ func DedupDevice(dir string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	cas, err := storage.NewCAS(dir)
 	if err != nil {
 		return err
@@ -48,11 +48,11 @@ func DedupDevice(dir string) error {
 	for _, e := range entries {
 		line := storage.HashString(e.ContentHash) + " " + itoa64(e.Size) + " " + itoa64(e.Ptr) + "\n"
 		if _, err := mf.WriteString(line); err != nil {
-			mf.Close()
+			_ = mf.Close()
 			return err
 		}
 	}
-	mf.Close()
+	_ = mf.Close()
 	hdr.Flags |= FlagDedup
 	if err := WriteManifestFlags(manifestPath, entries, hdr.Flags, hdr.Version); err != nil {
 		return err

@@ -100,7 +100,7 @@ func (o *Orchestrator) verifyImage(dir string) error {
 	if err != nil {
 		return ckpterr.Wrap(ckpterr.IO, "device.bin", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	for _, e := range entries {
 		ok, verr := image.VerifyChunk(f, int64(e.Offset), int64(e.Size), e.CRC32C)
 		if verr != nil {

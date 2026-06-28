@@ -41,7 +41,7 @@ func Status(runDir string, pid, count int) Result {
 	if err != nil {
 		return Result{Op: "status", Count: count, Errors: count}
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	for i := 0; i < count; i++ {
 		if _, err := cli.Status(); err != nil {
 			errs++

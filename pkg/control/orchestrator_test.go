@@ -42,7 +42,7 @@ func TestSortedShimsOrder(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		f.Close()
+		_ = f.Close()
 	}
 	got, err := sortedShims(dir)
 	if err != nil {

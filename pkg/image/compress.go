@@ -21,7 +21,7 @@ func CompressDevice(dir string) error {
 	if err != nil {
 		return err
 	}
-	defer enc.Close()
+	defer func() { _ = enc.Close() }()
 	compressed := enc.EncodeAll(data, nil)
 	if err := os.WriteFile(filepath.Join(dir, deviceZst), compressed, 0o644); err != nil {
 		return err
@@ -46,7 +46,7 @@ func DecompressDevice(dir string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	dec, err := zstd.NewReader(f)
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func readManifestHeader(path string) (Header, error) {
 	if err != nil {
 		return Header{}, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	var h Header
 	if err := binary.Read(f, binary.LittleEndian, &h); err != nil {
 		return Header{}, err

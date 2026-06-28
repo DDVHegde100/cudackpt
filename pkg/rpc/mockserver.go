@@ -77,7 +77,7 @@ func replyU32(c net.Conn, v uint32) bool {
 }
 
 func serveMockConn(c net.Conn, st *mockState) {
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	if st.secret != "" {
 		var op [4]byte
 		if _, err := io.ReadFull(c, op[:]); err != nil {
