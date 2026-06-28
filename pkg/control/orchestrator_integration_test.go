@@ -120,6 +120,40 @@ func TestCheckpointWithRetryHermetic(t *testing.T) {
 	}
 }
 
+func TestCheckpointWithRetryExhaustionMetrics(t *testing.T) {
+	root := t.TempDir()
+	runDir := filepath.Join(root, "run")
+	if err := os.MkdirAll(runDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const pid = 7050
+	sock := filepath.Join(runDir, "7050.sock")
+	stop, err := rpc.ServeMockWithOptions(sock, rpc.MockOptions{FailFreezeUntil: 100})
+	if err != nil {
+		t.Skip(err)
+	}
+	defer stop()
+
+	cfg := config.Default()
+	cfg.RunDir = runDir
+	out := filepath.Join(root, "fail")
+	orc := NewWithCRIU(cfg, &criu.Fake{})
+	policy := RetryPolicy{MaxAttempts: 3, Backoff: time.Millisecond}
+
+	before, _ := metrics.Default.Snapshot()
+	err = orc.CheckpointWithRetry(pid, out, policy)
+	if err == nil {
+		t.Fatal("expected checkpoint failure")
+	}
+	after, _ := metrics.Default.Snapshot()
+	if after[metrics.CheckpointsTotal]-before[metrics.CheckpointsTotal] != 0 {
+		t.Fatalf("checkpoints before=%v after=%v", before, after)
+	}
+	if after[metrics.CheckpointFailures]-before[metrics.CheckpointFailures] != 1 {
+		t.Fatalf("failures before=%v after=%v", before, after)
+	}
+}
+
 func TestCheckpointWithRetryAuthHermetic(t *testing.T) {
 	root := t.TempDir()
 	runDir := filepath.Join(root, "run")
