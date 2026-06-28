@@ -11,6 +11,7 @@ Use this before tagging a new version.
 - [ ] `make deb` succeeds (or CI deb job on `main`)
 - [ ] `make docker-prod-smoke` succeeds when Docker is available
 - [ ] `SECURITY.md` lists the release in supported versions
+- [ ] Restore and GC metrics documented in `docs/OPERATIONS.md`
 
 ## Tag and publish
 

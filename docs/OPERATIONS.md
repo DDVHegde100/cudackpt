@@ -109,8 +109,10 @@ cudackpt resume <pid>
 Install from a release `.deb` or `make deb`:
 
 ```bash
-sudo dpkg -i cudackpt_0.1.0_amd64.deb
+sudo dpkg -i cudackpt_0.2.0_amd64.deb
 ```
+
+The package declares a dependency on **CRIU 3.x** and recommends an NVIDIA driver package; it does not install the CUDA toolkit.
 
 The package creates the `cudackpt` user/group, installs `/etc/cudackpt.conf`, enables `cudackpt-run.service`, and removes the agent on uninstall via `prerm`.
 
@@ -152,12 +154,17 @@ Shim IPC sockets are created mode `0660` under `run_dir`, owned by the process U
 |---------|---------|
 | `cudackpt_checkpoints_total` | Successful checkpoints (one per final success, including after retries) |
 | `cudackpt_checkpoint_failures_total` | Failed checkpoint operations (one per failed `checkpoint` or exhausted retry) |
+| `cudackpt_restores_total` | Successful restores |
+| `cudackpt_restore_failures_total` | Failed restores (preflight, materialize, CRIU, or shim timeout) |
 | `cudackpt_rollbacks_total` | Successful rollbacks |
+| `cudackpt_gc_removed_total` | Images removed by agent GC |
 | `cudackpt_gc_errors_total` | Agent image GC failures |
+| `cudackpt_images` | Gauge: checkpoint directories under `image_root` |
+| `cudackpt_shims` | Gauge: live shim sockets under `run_dir` |
 
 ## Control socket
 
-`cudackpt.socket` listens on `/run/cudackpt/control.sock`. Connecting triggers `cudackpt@.service`, which runs `cudackpt serve` and lists shim PIDs on the accepted connection.
+`cudackpt.socket` listens on `/run/cudackpt/control.sock`. Connecting triggers `cudackpt@.service`, which runs `cudackpt serve`. Send `ps` or `health` on stdin (default command is `ps`).
 
 ## Failure triage
 

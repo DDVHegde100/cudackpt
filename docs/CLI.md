@@ -107,17 +107,24 @@ Measure RPC ping and status latency (default 100 iterations).
 
 ### `cudackpt metrics [--listen addr]`
 
-Serve Prometheus metrics on `/metrics` (default `:9090`). Blocks until interrupted.
+Serve Prometheus metrics on `/metrics` (default `:9090`). Handles SIGINT/SIGTERM for graceful shutdown.
 
 ### `cudackpt agent [--listen addr]`
 
-Long-running daemon: metrics HTTP server (`/metrics`), readiness probe (`GET /health`), periodic gauge refresh, optional scheduled GC via `CUDACKPT_AGENT_GC_INTERVAL`. GC failures increment `cudackpt_gc_errors_total` and emit JSON log events.
+Long-running daemon: metrics HTTP server (`/metrics`), readiness probe (`GET /health`, optional `?deep=1` for CRIU/driver checks), periodic gauge refresh, optional scheduled GC via `CUDACKPT_AGENT_GC_INTERVAL`. GC failures increment `cudackpt_gc_errors_total` and emit JSON log events.
 
 Systemd unit: `cudackpt-agent.service`.
 
 ### `cudackpt serve`
 
-One-shot socket-activation helper for systemd. Reads a command from stdin (default `ps`) and writes shim listing to stdout. Used by `cudackpt@.service`.
+Systemd socket-activation helper. Reads one command from stdin:
+
+| Command | Action |
+|---------|--------|
+| `ps` (default) | List shim PIDs and states |
+| `health` | Run shallow health probe; exit non-zero if degraded |
+
+Used by `cudackpt@.service` when clients connect to `/run/cudackpt/control.sock`.
 
 ### `cudackpt completion bash|zsh`
 

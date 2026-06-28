@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Config** — `rpc_secret` key in `/etc/cudackpt.conf` (overridden by `CUDACKPT_RPC_SECRET`)
+- **CLI** — `cudackpt serve health` for socket-activated readiness checks
+- **Agent** — deep health via `GET /health?deep=1` or `CUDACKPT_AGENT_DEEP_HEALTH=1`
+- **Testing** — `DedupDevice` unit tests, restore failure metrics integration tests
+
+### Fixed
+
+- **Metrics** — `cudackpt_restore_failures_total` incremented on preflight, materialize, and CRIU errors
+- **Metrics** — `cudackpt metrics` shuts down cleanly on SIGINT/SIGTERM
+- **Shim** — unlink per-PID IPC socket on process exit
+- **Packaging** — `.deb` declares `Depends: criu` and recommends NVIDIA driver packages
+
+### Changed
+
+- **CI** — nightly GPU workflow runs `go test -race`
+
 ## [0.2.0] - 2026-06-28
 
 ### Added
