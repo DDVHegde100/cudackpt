@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -54,5 +56,20 @@ func TestOptionsFromConfig(t *testing.T) {
 	}
 	if opts.GCInterval != time.Hour {
 		t.Fatalf("gc=%v", opts.GCInterval)
+	}
+}
+
+func TestHealthHandler(t *testing.T) {
+	runDir := t.TempDir()
+	cfg := config.Default()
+	cfg.RunDir = runDir
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+	healthHandler(cfg)(rec, req)
+	if rec.Code != http.StatusOK && rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("code=%d", rec.Code)
+	}
+	if rec.Body.Len() == 0 {
+		t.Fatal("empty body")
 	}
 }

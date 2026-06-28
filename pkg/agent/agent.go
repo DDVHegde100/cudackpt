@@ -9,6 +9,7 @@ import (
 
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/control"
+	"github.com/dhruvhegde/cudackpt/pkg/health"
 	jlog "github.com/dhruvhegde/cudackpt/pkg/log"
 	"github.com/dhruvhegde/cudackpt/pkg/metrics"
 )
@@ -70,6 +71,7 @@ func Run(ctx context.Context, opts Options) error {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", metrics.Default.Handler())
+	mux.HandleFunc("/health", healthHandler(opts.Config))
 	srv := &http.Server{Addr: opts.Listen, Handler: mux}
 	go func() {
 		<-ctx.Done()
@@ -78,7 +80,7 @@ func Run(ctx context.Context, opts Options) error {
 		_ = srv.Shutdown(shutCtx)
 	}()
 	go runLoop(ctx, opts)
-	fmt.Fprintf(os.Stderr, "cudackpt agent listening on http://%s/metrics\n", opts.Listen)
+	fmt.Fprintf(os.Stderr, "cudackpt agent listening on http://%s/metrics (health: /health)\n", opts.Listen)
 	err := srv.ListenAndServe()
 	if err == http.ErrServerClosed {
 		return nil
@@ -122,5 +124,18 @@ func runGC(opts Options) {
 	if len(removed) > 0 {
 		metrics.Default.Add(metrics.GCRemovedTotal, uint64(len(removed)))
 		RefreshGauges(opts.Config)
+	}
+}
+
+func healthHandler(cfg config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		st := health.ProbeWith(cfg.RunDir)
+		body := health.Format(st)
+		if st.OK {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+		_, _ = w.Write([]byte(body))
 	}
 }
