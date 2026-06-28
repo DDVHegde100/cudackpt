@@ -16,6 +16,8 @@ Version: ${VERSION}
 Section: utils
 Priority: optional
 Architecture: amd64
+Depends: criu (>= 3.0)
+Recommends: nvidia-driver-535 | nvidia-driver-550
 Maintainer: Dhruv Hegde <ddvhegde100@gmail.com>
 Description: CUDA process checkpoint and restore with CRIU
  Single-GPU checkpoint/restore control plane and LD_PRELOAD shim.
