@@ -117,11 +117,13 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 	logRestorePhase(imagePath, "start", 0, nil)
 	if err := PreflightRestore(imagePath); err != nil {
 		jlog.Error("restore_preflight", err, map[string]any{"dir": imagePath})
+		metrics.Default.Inc(metrics.RestoreFailuresTotal)
 		return 0, err
 	}
 	logRestorePhase(imagePath, "preflight", 0, nil)
 	if err := image.EnsureDeviceMaterialized(imagePath); err != nil {
 		jlog.Error("restore_materialize", err, map[string]any{"dir": imagePath})
+		metrics.Default.Inc(metrics.RestoreFailuresTotal)
 		return 0, ckpterr.Wrap(ckpterr.IO, "materialize", err)
 	}
 	logRestorePhase(imagePath, "materialize", 0, nil)
@@ -138,6 +140,7 @@ func (o *Orchestrator) Restore(imagePath string) (int, error) {
 	pid, err := o.criu.Restore(imagePath, logPath, env)
 	if err != nil {
 		jlog.Error("restore_criu", err, map[string]any{"dir": imagePath})
+		metrics.Default.Inc(metrics.RestoreFailuresTotal)
 		return 0, ckpterr.Wrap(ckpterr.CRIU, "restore", err)
 	}
 	if pid > 0 {

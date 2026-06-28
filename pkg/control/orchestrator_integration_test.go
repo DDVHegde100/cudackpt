@@ -35,6 +35,7 @@ func TestRestoreHermeticWithFakeCRIU(t *testing.T) {
 	cfg.RestoreTimeout = 3 * time.Second
 	cfg.RetryBackoff = 20 * time.Millisecond
 
+	before, _ := metrics.Default.Snapshot()
 	fake := &criu.Fake{RestorePID: pid}
 	orc := NewWithCRIU(cfg, fake)
 	got, err := orc.Restore(img)
@@ -50,6 +51,13 @@ func TestRestoreHermeticWithFakeCRIU(t *testing.T) {
 	events, err := os.ReadFile(filepath.Join(img, restoreEventsName))
 	if err != nil || len(events) == 0 {
 		t.Fatal("restore events missing")
+	}
+	after, _ := metrics.Default.Snapshot()
+	if after[metrics.RestoresTotal]-before[metrics.RestoresTotal] != 1 {
+		t.Fatalf("restores before=%v after=%v", before, after)
+	}
+	if after[metrics.RestoreFailuresTotal]-before[metrics.RestoreFailuresTotal] != 0 {
+		t.Fatalf("failures before=%v after=%v", before, after)
 	}
 }
 
@@ -205,6 +213,26 @@ func TestRollbackHermetic(t *testing.T) {
 	after, _ := metrics.Default.Snapshot()
 	if after[metrics.RollbacksTotal]-before[metrics.RollbacksTotal] != 1 {
 		t.Fatalf("rollbacks before=%v after=%v", before, after)
+	}
+}
+
+func TestRestoreFailureMetrics(t *testing.T) {
+	root := t.TempDir()
+	img := filepath.Join(root, "image")
+	writeTestImage(t, img)
+	cfg := config.Default()
+	cfg.RunDir = filepath.Join(root, "run")
+	before, _ := metrics.Default.Snapshot()
+	orc := NewWithCRIU(cfg, &criu.Fake{RestoreErr: os.ErrPermission})
+	if _, err := orc.Restore(img); err == nil {
+		t.Fatal("expected criu error")
+	}
+	after, _ := metrics.Default.Snapshot()
+	if after[metrics.RestoresTotal]-before[metrics.RestoresTotal] != 0 {
+		t.Fatalf("restores before=%v after=%v", before, after)
+	}
+	if after[metrics.RestoreFailuresTotal]-before[metrics.RestoreFailuresTotal] != 1 {
+		t.Fatalf("failures before=%v after=%v", before, after)
 	}
 }
 
