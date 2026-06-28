@@ -31,6 +31,9 @@ func TestRefreshGauges(t *testing.T) {
 }
 
 func TestRunGCErrorIncrementsMetric(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root bypasses pin file permission checks")
+	}
 	metrics.Default.Set(metrics.GCErrorsTotal, 0)
 	root := t.TempDir()
 	pin := filepath.Join(root, "noperm")
