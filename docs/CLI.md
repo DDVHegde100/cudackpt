@@ -111,9 +111,21 @@ Serve Prometheus metrics on `/metrics` (default `:9090`). Blocks until interrupt
 
 ### `cudackpt agent [--listen addr]`
 
-Long-running daemon: metrics HTTP server, periodic gauge refresh, optional scheduled GC via `CUDACKPT_AGENT_GC_INTERVAL`. GC failures increment `cudackpt_gc_errors_total` and emit JSON log events.
+Long-running daemon: metrics HTTP server (`/metrics`), readiness probe (`GET /health`), periodic gauge refresh, optional scheduled GC via `CUDACKPT_AGENT_GC_INTERVAL`. GC failures increment `cudackpt_gc_errors_total` and emit JSON log events.
 
 Systemd unit: `cudackpt-agent.service`.
+
+### `cudackpt completion bash|zsh`
+
+Emit shell completion script to stdout. Install:
+
+```bash
+# bash
+source <(cudackpt completion bash)
+
+# zsh
+source <(cudackpt completion zsh)
+```
 
 ## Process discovery
 

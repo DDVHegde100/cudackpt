@@ -348,6 +348,13 @@ func main() {
 		}
 	case "version":
 		fmt.Println(version.String())
+	case "completion":
+		if len(os.Args) < 3 {
+			die(fmt.Errorf("usage: cudackpt completion bash|zsh"))
+		}
+		if err := emitCompletion(os.Args[2], os.Stdout); err != nil {
+			die(err)
+		}
 	case "metrics":
 		addr := ":9090"
 		for i := 2; i < len(os.Args); i++ {
@@ -410,6 +417,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "       cudackpt stats <pid>\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt health [-d]\n")
 	fmt.Fprintf(os.Stderr, "       cudackpt version\n")
+	fmt.Fprintf(os.Stderr, "       cudackpt completion bash|zsh\n")
 }
 
 func die(err error) {
