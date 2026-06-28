@@ -104,6 +104,16 @@ cudackpt gpu-restore <pid> /var/lib/cudackpt/ckpt-<old-pid>
 cudackpt resume <pid>
 ```
 
+## Debian package
+
+Install from a release `.deb` or `make deb`:
+
+```bash
+sudo dpkg -i cudackpt_0.1.0_amd64.deb
+```
+
+The package creates the `cudackpt` user/group, installs `/etc/cudackpt.conf`, enables `cudackpt-run.service`, and removes the agent on uninstall via `prerm`.
+
 ## Systemd deployment
 
 Install runtime directory and socket units:

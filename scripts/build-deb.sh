@@ -43,7 +43,36 @@ mkdir -p /var/lib/cudackpt /run/cudackpt
 chown root:cudackpt /run/cudackpt /var/lib/cudackpt 2>/dev/null || true
 chmod 0755 /run/cudackpt /var/lib/cudackpt
 EOF
-chmod 755 "$STAGE/DEBIAN/postinst"
+chmod 0755 "$STAGE/DEBIAN/postinst"
+
+cat > "$STAGE/DEBIAN/prerm" <<'EOF'
+#!/bin/sh
+set -e
+if [ "$1" = "remove" ] || [ "$1" = "deconfigure" ]; then
+  if command -v deb-systemd-invoke >/dev/null 2>&1; then
+    deb-systemd-invoke stop cudackpt-agent.service || true
+    deb-systemd-invoke disable cudackpt-agent.service || true
+    deb-systemd-invoke stop cudackpt-run.service || true
+  elif command -v systemctl >/dev/null 2>&1; then
+    systemctl stop cudackpt-agent.service || true
+    systemctl disable cudackpt-agent.service || true
+    systemctl stop cudackpt-run.service || true
+  fi
+fi
+EOF
+chmod 755 "$STAGE/DEBIAN/prerm"
+
+cat >> "$STAGE/DEBIAN/postinst" <<'EOF'
+if command -v deb-systemd-invoke >/dev/null 2>&1; then
+  deb-systemd-invoke daemon-reload || true
+  deb-systemd-invoke enable cudackpt-run.service || true
+  deb-systemd-invoke start cudackpt-run.service || true
+elif command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload || true
+  systemctl enable cudackpt-run.service || true
+  systemctl start cudackpt-run.service || true
+fi
+EOF
 
 OUT="$ROOT/build/${PKG}.deb"
 dpkg-deb --build "$STAGE" "$OUT"
