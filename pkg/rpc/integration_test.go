@@ -44,7 +44,3 @@ func TestMockShimRPC(t *testing.T) {
 		t.Fatalf("stats=%+v err=%v", stats, err)
 	}
 }
-
-func handleMock(c net.Conn) {
-	handleMockConn(c, "")
-}

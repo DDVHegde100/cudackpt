@@ -51,48 +51,67 @@ func emitCompletion(shell string, w io.Writer) error {
 	}
 }
 
+func completionLine(w *bufio.Writer, line string) error {
+	_, err := fmt.Fprintln(w, line)
+	return err
+}
+
 func emitBashCompletion(w io.Writer) error {
 	sc := bufio.NewWriter(w)
-	fmt.Fprintln(sc, `# cudackpt bash completion`)
-	fmt.Fprintln(sc, `_cudackpt_completions() {`)
-	fmt.Fprintln(sc, `  local cur prev`)
-	fmt.Fprintln(sc, `  cur="${COMP_WORDS[COMP_CWORD]}"`)
-	fmt.Fprintln(sc, `  prev="${COMP_WORDS[COMP_CWORD-1]}"`)
-	fmt.Fprintln(sc, `  local commands="`+strings.Join(completionCommands, " ")+`"`)
-	fmt.Fprintln(sc, `  local flags="--until-running --timeout --listen --dry-run --stop --pin --root --older-than"`)
-	fmt.Fprintln(sc, `  if [[ ${COMP_CWORD} -eq 1 ]]; then`)
-	fmt.Fprintln(sc, `    COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )`)
-	fmt.Fprintln(sc, `    return`)
-	fmt.Fprintln(sc, `  fi`)
-	fmt.Fprintln(sc, `  case "${prev}" in`)
-	fmt.Fprintln(sc, `    completion)`)
-	fmt.Fprintln(sc, `      COMPREPLY=( $(compgen -W "bash zsh" -- "${cur}") )`)
-	fmt.Fprintln(sc, `      return`)
-	fmt.Fprintln(sc, `    *)`)
-	fmt.Fprintln(sc, `      COMPREPLY=( $(compgen -W "${flags}" -- "${cur}") )`)
-	fmt.Fprintln(sc, `      ;;`)
-	fmt.Fprintln(sc, `  esac`)
-	fmt.Fprintln(sc, `}`)
-	fmt.Fprintln(sc, `complete -F _cudackpt_completions cudackpt`)
+	lines := []string{
+		`# cudackpt bash completion`,
+		`_cudackpt_completions() {`,
+		`  local cur prev`,
+		`  cur="${COMP_WORDS[COMP_CWORD]}"`,
+		`  prev="${COMP_WORDS[COMP_CWORD-1]}"`,
+		`  local commands="` + strings.Join(completionCommands, " ") + `"`,
+		`  local flags="--until-running --timeout --listen --dry-run --stop --pin --root --older-than"`,
+		`  if [[ ${COMP_CWORD} -eq 1 ]]; then`,
+		`    COMPREPLY=( $(compgen -W "${commands}" -- "${cur}") )`,
+		`    return`,
+		`  fi`,
+		`  case "${prev}" in`,
+		`    completion)`,
+		`      COMPREPLY=( $(compgen -W "bash zsh" -- "${cur}") )`,
+		`      return`,
+		`    *)`,
+		`      COMPREPLY=( $(compgen -W "${flags}" -- "${cur}") )`,
+		`      ;;`,
+		`  esac`,
+		`}`,
+		`complete -F _cudackpt_completions cudackpt`,
+	}
+	for _, line := range lines {
+		if err := completionLine(sc, line); err != nil {
+			return err
+		}
+	}
 	return sc.Flush()
 }
 
 func emitZshCompletion(w io.Writer) error {
 	sc := bufio.NewWriter(w)
-	fmt.Fprintln(sc, `#compdef cudackpt`)
-	fmt.Fprintln(sc, `_cudackpt() {`)
-	fmt.Fprintln(sc, `  local -a commands flags`)
-	fmt.Fprintln(sc, `  commands=(`+strings.Join(completionCommands, " ")+`)`)
-	fmt.Fprintln(sc, `  flags=(--until-running --timeout --listen --dry-run --stop --pin --root --older-than)`)
-	fmt.Fprintln(sc, `  if (( CURRENT == 2 )); then`)
-	fmt.Fprintln(sc, `    _describe command commands`)
-	fmt.Fprintln(sc, `  elif [[ ${words[2]} == completion ]]; then`)
-	fmt.Fprintln(sc, `    _describe shell 'bash zsh'`)
-	fmt.Fprintln(sc, `  else`)
-	fmt.Fprintln(sc, `    _describe flag flags`)
-	fmt.Fprintln(sc, `  fi`)
-	fmt.Fprintln(sc, `}`)
-	fmt.Fprintln(sc, `_cudackpt`)
+	lines := []string{
+		`#compdef cudackpt`,
+		`_cudackpt() {`,
+		`  local -a commands flags`,
+		`  commands=(` + strings.Join(completionCommands, " ") + `)`,
+		`  flags=(--until-running --timeout --listen --dry-run --stop --pin --root --older-than)`,
+		`  if (( CURRENT == 2 )); then`,
+		`    _describe command commands`,
+		`  elif [[ ${words[2]} == completion ]]; then`,
+		`    _describe shell 'bash zsh'`,
+		`  else`,
+		`    _describe flag flags`,
+		`  fi`,
+		`}`,
+		`_cudackpt`,
+	}
+	for _, line := range lines {
+		if err := completionLine(sc, line); err != nil {
+			return err
+		}
+	}
 	return sc.Flush()
 }
 
