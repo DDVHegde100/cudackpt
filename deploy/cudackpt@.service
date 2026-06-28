@@ -1,7 +1,7 @@
 [Unit]
-Description=cudackpt control helper
-Requires=cudackpt.socket
-After=cudackpt-run.service
+Description=cudackpt control helper (%i)
+PartOf=cudackpt.socket
+After=cudackpt-run.service cudackpt.socket
 
 [Service]
 Type=oneshot

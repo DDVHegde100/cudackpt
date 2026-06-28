@@ -1,9 +1,12 @@
 [Unit]
 Description=cudackpt control socket
 Requires=cudackpt-run.service
+After=cudackpt-run.service
 
 [Socket]
 ListenStream=/run/cudackpt/control.sock
+Accept=yes
+Service=cudackpt@.service
 SocketMode=0660
 SocketUser=root
 SocketGroup=cudackpt
