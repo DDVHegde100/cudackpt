@@ -36,6 +36,18 @@ func imageDir(base string, pid int) string {
 }
 
 func (o *Orchestrator) Checkpoint(pid int, out string) error {
+	err := o.doCheckpoint(pid, out)
+	if err != nil {
+		jlog.Error("checkpoint_fail", err, map[string]any{"pid": pid})
+		metrics.Default.Inc(metrics.CheckpointFailures)
+		return err
+	}
+	metrics.Default.Inc(metrics.CheckpointsTotal)
+	jlog.Info("checkpoint_ok", map[string]any{"pid": pid, "dir": out})
+	return nil
+}
+
+func (o *Orchestrator) doCheckpoint(pid int, out string) error {
 	if out == "" {
 		out = imageDir(o.cfg.ImageRoot, pid)
 	}
@@ -66,14 +78,7 @@ func (o *Orchestrator) Checkpoint(pid int, out string) error {
 		}
 		return nil
 	})
-	if err != nil {
-		jlog.Error("checkpoint_fail", err, map[string]any{"pid": pid})
-		metrics.Default.Inc(metrics.CheckpointFailures)
-		return err
-	}
-	metrics.Default.Inc(metrics.CheckpointsTotal)
-	jlog.Info("checkpoint_ok", map[string]any{"pid": pid, "dir": out})
-	return nil
+	return err
 }
 
 func (o *Orchestrator) verifyImage(dir string) error {

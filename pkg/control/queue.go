@@ -5,6 +5,7 @@ import (
 
 	"github.com/dhruvhegde/cudackpt/internal/ckpterr"
 	jlog "github.com/dhruvhegde/cudackpt/pkg/log"
+	"github.com/dhruvhegde/cudackpt/pkg/metrics"
 )
 
 type RetryPolicy struct {
@@ -49,15 +50,23 @@ func (o *Orchestrator) CheckpointWithRetry(pid int, out string, policy RetryPoli
 	if policy.MaxAttempts <= 0 {
 		policy = o.retryPolicy()
 	}
-	return applyRetry(policy, func(attempt int) error {
+	err := applyRetry(policy, func(attempt int) error {
 		jlog.Info("checkpoint_attempt", map[string]any{"pid": pid, "attempt": attempt})
-		return o.Checkpoint(pid, out)
+		return o.doCheckpoint(pid, out)
 	}, func(err error) bool {
 		if ce, ok := err.(*ckpterr.Error); ok && ce.Code == ckpterr.Unsupported {
 			return true
 		}
 		return false
 	})
+	if err != nil {
+		jlog.Error("checkpoint_fail", err, map[string]any{"pid": pid})
+		metrics.Default.Inc(metrics.CheckpointFailures)
+		return err
+	}
+	metrics.Default.Inc(metrics.CheckpointsTotal)
+	jlog.Info("checkpoint_ok", map[string]any{"pid": pid, "dir": out})
+	return nil
 }
 
 func (o *Orchestrator) EnqueueCheckpoint(pid int, out string) error {
