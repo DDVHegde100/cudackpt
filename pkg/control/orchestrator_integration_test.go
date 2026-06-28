@@ -8,6 +8,7 @@ import (
 
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/image"
+	"github.com/dhruvhegde/cudackpt/pkg/metrics"
 	"github.com/dhruvhegde/cudackpt/pkg/rpc"
 	"github.com/dhruvhegde/cudackpt/third_party/criu"
 )
@@ -52,6 +53,34 @@ func TestRestoreHermeticWithFakeCRIU(t *testing.T) {
 	}
 }
 
+func TestRestoreHermeticWithAuth(t *testing.T) {
+	root := t.TempDir()
+	runDir := filepath.Join(root, "run")
+	img := filepath.Join(root, "image")
+	writeTestImage(t, img)
+	const pid = 9100
+	const secret = "restore-secret"
+	sock := filepath.Join(runDir, "9100.sock")
+	stop, err := rpc.ServeMockWithOptions(sock, rpc.MockOptions{Secret: secret})
+	if err != nil {
+		t.Skip(err)
+	}
+	defer stop()
+	t.Setenv("CUDACKPT_RPC_SECRET", secret)
+
+	cfg := config.Default()
+	cfg.RunDir = runDir
+	cfg.RestoreTimeout = 3 * time.Second
+	orc := NewWithCRIU(cfg, &criu.Fake{RestorePID: pid})
+	got, err := orc.Restore(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != pid {
+		t.Fatalf("pid=%d", got)
+	}
+}
+
 func TestCheckpointWithRetryHermetic(t *testing.T) {
 	root := t.TempDir()
 	runDir := filepath.Join(root, "run")
@@ -73,6 +102,7 @@ func TestCheckpointWithRetryHermetic(t *testing.T) {
 	cfg.RetryBackoff = 5 * time.Millisecond
 	t.Setenv("LD_PRELOAD", "/usr/lib/libcudackpt.so")
 
+	before, _ := metrics.Default.Snapshot()
 	orc := NewWithCRIU(cfg, &criu.Fake{})
 	policy := RetryPolicy{MaxAttempts: 3, Backoff: 5 * time.Millisecond}
 	if err := orc.CheckpointWithRetry(pid, out, policy); err != nil {
@@ -80,6 +110,67 @@ func TestCheckpointWithRetryHermetic(t *testing.T) {
 	}
 	if !image.IsComplete(out) {
 		t.Fatal("checkpoint not finalized")
+	}
+	after, _ := metrics.Default.Snapshot()
+	if after[metrics.CheckpointsTotal]-before[metrics.CheckpointsTotal] != 1 {
+		t.Fatalf("checkpoints before=%v after=%v", before, after)
+	}
+	if after[metrics.CheckpointFailures]-before[metrics.CheckpointFailures] != 0 {
+		t.Fatalf("failures before=%v after=%v", before, after)
+	}
+}
+
+func TestCheckpointWithRetryAuthHermetic(t *testing.T) {
+	root := t.TempDir()
+	runDir := filepath.Join(root, "run")
+	const pid = 7100
+	const secret = "ckpt-secret"
+	sock := filepath.Join(runDir, "7100.sock")
+	stop, err := rpc.ServeMockWithOptions(sock, rpc.MockOptions{Secret: secret})
+	if err != nil {
+		t.Skip(err)
+	}
+	defer stop()
+	t.Setenv("CUDACKPT_RPC_SECRET", secret)
+	t.Setenv("LD_PRELOAD", "/usr/lib/libcudackpt.so")
+
+	cfg := config.Default()
+	cfg.RunDir = runDir
+	out := filepath.Join(root, "ckpt-auth")
+	orc := NewWithCRIU(cfg, &criu.Fake{})
+	if err := orc.CheckpointWithRetry(pid, out, RetryPolicy{MaxAttempts: 1, Backoff: time.Millisecond}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRollbackHermetic(t *testing.T) {
+	root := t.TempDir()
+	runDir := filepath.Join(root, "run")
+	img := filepath.Join(root, "image")
+	writeTestImage(t, img)
+	const pid = 9200
+	sock := filepath.Join(runDir, "9200.sock")
+	stop, err := rpc.ServeMockAt(sock)
+	if err != nil {
+		t.Skip(err)
+	}
+	defer stop()
+
+	before, _ := metrics.Default.Snapshot()
+	cfg := config.Default()
+	cfg.RunDir = runDir
+	cfg.RestoreTimeout = 3 * time.Second
+	orc := NewWithCRIU(cfg, &criu.Fake{RestorePID: pid})
+	got, err := orc.Rollback(img, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != pid {
+		t.Fatalf("pid=%d", got)
+	}
+	after, _ := metrics.Default.Snapshot()
+	if after[metrics.RollbacksTotal]-before[metrics.RollbacksTotal] != 1 {
+		t.Fatalf("rollbacks before=%v after=%v", before, after)
 	}
 }
 
