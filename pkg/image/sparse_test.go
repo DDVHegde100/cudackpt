@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/dhruvhegde/cudackpt/pkg/storage"
 )
 
 func TestSparseZeroRun(t *testing.T) {
@@ -50,5 +52,16 @@ func TestDedupDevice(t *testing.T) {
 	_, hdr, err := ReadManifest(filepath.Join(dir, "manifest.bin"))
 	if err != nil || !HasFlag(hdr.Flags, FlagDedup) {
 		t.Fatalf("hdr=%+v err=%v", hdr, err)
+	}
+	entries, _, err = ReadManifest(filepath.Join(dir, "manifest.bin"))
+	if err != nil || entries[0].ContentHash != entries[1].ContentHash {
+		t.Fatalf("entries=%+v err=%v", entries, err)
+	}
+	cas, err := storage.NewCAS(dir)
+	if err != nil || !cas.Has(entries[0].ContentHash) {
+		t.Fatalf("cas missing err=%v", err)
+	}
+	if err := EnsureDeviceMaterialized(dir); err != nil {
+		t.Fatal(err)
 	}
 }
