@@ -14,11 +14,14 @@ import (
 type MockOptions struct {
 	Secret          string
 	FailFreezeUntil int32
+	StatusSeq       []uint32
 }
 
 type mockState struct {
 	secret          string
 	failFreezeUntil int32
+	statusSeq       []uint32
+	statusIdx       int32
 }
 
 func ServeMockAt(path string) (func(), error) {
@@ -26,7 +29,11 @@ func ServeMockAt(path string) (func(), error) {
 }
 
 func ServeMockWithOptions(path string, opts MockOptions) (func(), error) {
-	st := &mockState{secret: opts.Secret, failFreezeUntil: opts.FailFreezeUntil}
+	st := &mockState{
+		secret:          opts.Secret,
+		failFreezeUntil: opts.FailFreezeUntil,
+		statusSeq:       opts.StatusSeq,
+	}
 	_ = os.Remove(path)
 	ln, err := net.Listen("unix", path)
 	if err != nil {
@@ -54,6 +61,21 @@ func ServeMockWithOptions(path string, opts MockOptions) (func(), error) {
 	}, nil
 }
 
+func mockStatus(st *mockState) uint32 {
+	if len(st.statusSeq) == 0 {
+		return 4
+	}
+	idx := atomic.AddInt32(&st.statusIdx, 1) - 1
+	if int(idx) >= len(st.statusSeq) {
+		return st.statusSeq[len(st.statusSeq)-1]
+	}
+	return st.statusSeq[idx]
+}
+
+func replyU32(c net.Conn, v uint32) bool {
+	return writeU32(c, v) == nil
+}
+
 func serveMockConn(c net.Conn, st *mockState) {
 	defer c.Close()
 	if st.secret != "" {
@@ -62,7 +84,7 @@ func serveMockConn(c net.Conn, st *mockState) {
 			return
 		}
 		if binary.BigEndian.Uint32(op[:]) != OpAuth {
-			_ = writeU32(c, 2)
+			replyU32(c, 2)
 			return
 		}
 		n, err := readU32(c)
@@ -74,10 +96,12 @@ func serveMockConn(c net.Conn, st *mockState) {
 			return
 		}
 		if string(buf) != st.secret {
-			_ = writeU32(c, 1)
+			replyU32(c, 1)
 			return
 		}
-		_ = writeU32(c, 0)
+		if !replyU32(c, 0) {
+			return
+		}
 	}
 	for {
 		var op [4]byte
@@ -86,13 +110,19 @@ func serveMockConn(c net.Conn, st *mockState) {
 		}
 		switch binary.BigEndian.Uint32(op[:]) {
 		case OpPing, OpResume:
-			_ = writeU32(c, 0)
+			if !replyU32(c, 0) {
+				return
+			}
 		case OpFreeze:
 			if st.failFreezeUntil > 0 && atomic.AddInt32(&st.failFreezeUntil, -1) >= 0 {
-				_ = writeU32(c, 1)
+				if !replyU32(c, 1) {
+					return
+				}
 				break
 			}
-			_ = writeU32(c, 0)
+			if !replyU32(c, 0) {
+				return
+			}
 		case OpSnapshot:
 			n, err := readU32(c)
 			if err != nil {
@@ -104,14 +134,25 @@ func serveMockConn(c net.Conn, st *mockState) {
 					return
 				}
 				dir := string(buf)
-				_ = os.MkdirAll(dir, 0o755)
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					replyU32(c, 1)
+					return
+				}
 				payload := []byte{1, 2, 3, 4}
-				_ = os.WriteFile(filepath.Join(dir, "device.bin"), payload, 0o644)
+				if err := os.WriteFile(filepath.Join(dir, "device.bin"), payload, 0o644); err != nil {
+					replyU32(c, 1)
+					return
+				}
 				_ = os.WriteFile(filepath.Join(dir, "dev.bin"), []byte{0, 0, 0, 0}, 0o644)
 				e := image.Entry{Ptr: 0x1000, Size: uint64(len(payload)), Offset: 0, CRC32C: image.CRC32C(payload), Seq: 1}
-				_ = image.WriteManifest(filepath.Join(dir, "manifest.bin"), []image.Entry{e})
+				if err := image.WriteManifest(filepath.Join(dir, "manifest.bin"), []image.Entry{e}); err != nil {
+					replyU32(c, 1)
+					return
+				}
 			}
-			_ = writeU32(c, 0)
+			if !replyU32(c, 0) {
+				return
+			}
 		case OpRestore:
 			n, err := readU32(c)
 			if err != nil {
@@ -123,19 +164,27 @@ func serveMockConn(c net.Conn, st *mockState) {
 					return
 				}
 			}
-			_ = writeU32(c, 0)
+			if !replyU32(c, 0) {
+				return
+			}
 		case OpStatus:
-			_ = writeU32(c, 4)
+			if !replyU32(c, mockStatus(st)) {
+				return
+			}
 		case OpStats:
-			_ = writeU32(c, 0)
+			if !replyU32(c, 0) {
+				return
+			}
 			for _, n := range []uint32{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4} {
-				_ = writeU32(c, n)
+				if !replyU32(c, n) {
+					return
+				}
 			}
 		case OpQuit:
-			_ = writeU32(c, 0)
+			replyU32(c, 0)
 			return
 		default:
-			_ = writeU32(c, 1)
+			replyU32(c, 1)
 		}
 	}
 }
