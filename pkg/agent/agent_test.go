@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -59,6 +60,21 @@ func TestOptionsFromConfig(t *testing.T) {
 	}
 	if opts.GCInterval != time.Hour {
 		t.Fatalf("gc=%v", opts.GCInterval)
+	}
+}
+
+func TestHealthHandlerDeep(t *testing.T) {
+	runDir := t.TempDir()
+	cfg := config.Default()
+	cfg.RunDir = runDir
+	req := httptest.NewRequest(http.MethodGet, "/health?deep=1", nil)
+	rec := httptest.NewRecorder()
+	healthHandler(cfg)(rec, req)
+	if rec.Code != http.StatusOK && rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("code=%d", rec.Code)
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("run_dir")) {
+		t.Fatalf("body=%q", rec.Body.String())
 	}
 }
 

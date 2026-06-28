@@ -128,8 +128,15 @@ func runGC(opts Options) {
 }
 
 func healthHandler(cfg config.Config) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		st := health.ProbeWith(cfg.RunDir)
+	deepDefault := os.Getenv("CUDACKPT_AGENT_DEEP_HEALTH") == "1"
+	return func(w http.ResponseWriter, r *http.Request) {
+		deep := deepDefault || r.URL.Query().Get("deep") == "1"
+		var st health.Status
+		if deep {
+			st = health.DeepProbeWith(cfg.RunDir)
+		} else {
+			st = health.ProbeWith(cfg.RunDir)
+		}
 		body := health.Format(st)
 		if st.OK {
 			w.WriteHeader(http.StatusOK)
