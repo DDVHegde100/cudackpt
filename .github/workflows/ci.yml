@@ -23,7 +23,9 @@ jobs:
       - name: unit
         run: make test
       - name: go test
-        run: go test ./...
+        run: go test -race ./...
+      - name: deb
+        run: apt-get install -y dpkg-dev && bash ./scripts/build-deb.sh
 
   lint:
     runs-on: ubuntu-latest
