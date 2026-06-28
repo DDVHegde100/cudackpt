@@ -5,10 +5,8 @@ Thanks for your interest in cudackpt.
 ## Before you start
 
 - Read [README.md](README.md) and [docs/OPERATIONS.md](docs/OPERATIONS.md)
-- Run tests locally: `go test ./...` and `make test`
+- Run tests locally: `go test ./...`, `make test`, and `make lint`
 - GPU e2e requires Linux, NVIDIA CUDA 12.x, and CRIU: `sudo make e2e-fast`
-
-## Development setup
 
 ```bash
 git clone https://github.com/DDVHegde100/cudackpt.git

@@ -7,7 +7,7 @@ SHIM := $(BUILD_DIR)/libcudackpt.so
 VECTORADD := $(BUILD_DIR)/vectoradd
 CUBLAS := $(BUILD_DIR)/cublas_gemm
 
-.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test install-systemd gc-images promote-image docker-prod-smoke deb
+.PHONY: all clean test shim go vectoradd cublas install smoke checkpoint e2e e2e-fast e2e-cublas e2e-pipeline restore validate all-tests bench go-test go-test-race lint install-systemd gc-images promote-image docker-prod-smoke deb
 
 all: shim go vectoradd
 
@@ -32,6 +32,12 @@ $(GO_OUT): $(shell find cmd pkg internal third_party -name '*.go' 2>/dev/null) V
 
 go-test:
 	go test ./...
+
+go-test-race:
+	go test -race ./...
+
+lint:
+	golangci-lint run ./...
 
 bench: go-test test
 	./scripts/bench.sh
