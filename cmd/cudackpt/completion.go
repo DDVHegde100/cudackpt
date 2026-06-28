@@ -9,6 +9,7 @@ import (
 
 	"github.com/dhruvhegde/cudackpt/pkg/config"
 	"github.com/dhruvhegde/cudackpt/pkg/control"
+	"github.com/dhruvhegde/cudackpt/pkg/health"
 )
 
 func runServe(cfg config.Config, orc *control.Orchestrator) error {
@@ -33,6 +34,13 @@ func runServe(cfg config.Config, orc *control.Orchestrator) error {
 				continue
 			}
 			fmt.Printf("%d %s\n", p, control.StateName(st))
+		}
+		return nil
+	case "health":
+		st := health.ProbeWith(cfg.RunDir)
+		fmt.Print(health.Format(st))
+		if !st.OK {
+			return fmt.Errorf("health degraded")
 		}
 		return nil
 	default:

@@ -58,6 +58,56 @@ func TestRunServePs(t *testing.T) {
 	}
 }
 
+func TestRunServeHealth(t *testing.T) {
+	root := t.TempDir()
+	runDir := filepath.Join(root, "run")
+	if err := os.MkdirAll(runDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Default()
+	cfg.RunDir = runDir
+	orc := control.New(cfg)
+
+	oldOut := os.Stdout
+	rOut, wOut, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = wOut
+	defer func() { os.Stdout = oldOut }()
+
+	oldIn := os.Stdin
+	rIn, wIn, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdin = rIn
+	if _, err := wIn.Write([]byte("health\n")); err != nil {
+		t.Fatal(err)
+	}
+	wIn.Close()
+	defer func() { os.Stdin = oldIn }()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- runServe(cfg, orc)
+	}()
+	serveErr := <-errCh
+	if err := wOut.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, rOut); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("run_dir")) {
+		t.Fatalf("serve health output=%q", buf.String())
+	}
+	if serveErr != nil && serveErr.Error() != "health degraded" {
+		t.Fatal(serveErr)
+	}
+}
+
 func TestRunServeUnknownCommand(t *testing.T) {
 	cfg := config.Default()
 	orc := control.New(cfg)
