@@ -29,7 +29,7 @@ sudo make e2e-fast
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `e2e-selfhosted.yml` | PR / manual | GPU e2e on changes |
+| `e2e-selfhosted.yml` | manual (`workflow_dispatch`) | GPU e2e on demand |
 | `nightly-gpu.yml` | nightly cron | cuBLAS + pipeline matrix |
 | `release.yml` → `gpu-gate` | tag `v*` | Gate releases (disabled until runner exists) |
 
@@ -42,4 +42,4 @@ gpu-gate:
   if: true   # was: if: false
 ```
 
-Push a new tag (e.g. `v0.1.1`) to run the gated release pipeline.
+Push a new tag (e.g. `v0.2.1`) to run the gated release pipeline.
