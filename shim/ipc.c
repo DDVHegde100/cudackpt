@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
-#include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -136,6 +136,14 @@ static int require_auth(int cfd) {
   return 0;
 }
 
+static void handle_client(int cfd);
+
+static void* client_thread(void* arg) {
+  int cfd = (int)(intptr_t)arg;
+  handle_client(cfd);
+  return NULL;
+}
+
 static void handle_client(int cfd) {
   if (require_auth(cfd) != 0) {
     close(cfd);
@@ -210,7 +218,9 @@ static void* server_thread(void* arg) {
   for (;;) {
     int cfd = accept(g_sock, NULL, NULL);
     if (cfd < 0) continue;
-    handle_client(cfd);
+    pthread_t tid;
+    pthread_create(&tid, NULL, client_thread, (void*)(intptr_t)cfd);
+    pthread_detach(tid);
   }
   return NULL;
 }
