@@ -46,11 +46,15 @@ func ShimSocketPath(runDir string, pid int) string {
 }
 
 func DialPath(path string) (*Client, error) {
+	return DialPathWithSecret(path, os.Getenv("CUDACKPT_RPC_SECRET"))
+}
+
+func DialPathWithSecret(path, secret string) (*Client, error) {
 	c, err := net.Dial("unix", path)
 	if err != nil {
 		return nil, err
 	}
-	if err := authenticate(c, os.Getenv("CUDACKPT_RPC_SECRET")); err != nil {
+	if err := authenticate(c, secret); err != nil {
 		_ = c.Close()
 		return nil, err
 	}

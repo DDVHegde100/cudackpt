@@ -12,6 +12,7 @@ import (
 type Config struct {
 	ImageRoot      string
 	RunDir         string
+	RpcSecret      string
 	RestoreTimeout time.Duration
 	ShimPoll       time.Duration
 	MaxRetries     int
@@ -96,6 +97,8 @@ func LoadWithWarnings() LoadResult {
 			} else {
 				warnings = append(warnings, "invalid retry_backoff: "+v)
 			}
+		case "rpc_secret":
+			cfg.RpcSecret = v
 		default:
 			warnings = append(warnings, "unknown config key: "+k)
 		}
@@ -130,6 +133,9 @@ func mergeEnv(cfg Config) Config {
 		if d, err := time.ParseDuration(v); err == nil {
 			cfg.RetryBackoff = d
 		}
+	}
+	if v := os.Getenv("CUDACKPT_RPC_SECRET"); v != "" {
+		cfg.RpcSecret = v
 	}
 	return cfg
 }

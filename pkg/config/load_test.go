@@ -8,6 +8,25 @@ import (
 	"time"
 )
 
+func TestLoadRpcSecretFromFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cudackpt.conf")
+	body := "rpc_secret=file-secret\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CUDACKPT_CONFIG", path)
+	cfg := Load()
+	if cfg.RpcSecret != "file-secret" {
+		t.Fatalf("rpc_secret=%q", cfg.RpcSecret)
+	}
+	t.Setenv("CUDACKPT_RPC_SECRET", "env-secret")
+	cfg = Load()
+	if cfg.RpcSecret != "env-secret" {
+		t.Fatalf("env override got %q", cfg.RpcSecret)
+	}
+}
+
 func TestLoadFileAndEnvOverride(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "cudackpt.conf")

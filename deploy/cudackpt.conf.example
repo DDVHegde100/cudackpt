@@ -8,3 +8,4 @@ restore_timeout=60s
 shim_poll=200ms
 max_retries=3
 retry_backoff=500ms
+# rpc_secret=change-me-in-production

@@ -3,6 +3,8 @@ package control
 import (
 	"sort"
 
+	"os"
+
 	"github.com/dhruvhegde/cudackpt/internal/ckpterr"
 	"github.com/dhruvhegde/cudackpt/pkg/image"
 	jlog "github.com/dhruvhegde/cudackpt/pkg/log"
@@ -10,7 +12,11 @@ import (
 )
 
 func (o *Orchestrator) dial(pid int) (*rpc.Client, error) {
-	cli, err := rpc.DialPath(shimSocketPath(o.cfg.RunDir, pid))
+	secret := o.cfg.RpcSecret
+	if secret == "" {
+		secret = os.Getenv("CUDACKPT_RPC_SECRET")
+	}
+	cli, err := rpc.DialPathWithSecret(shimSocketPath(o.cfg.RunDir, pid), secret)
 	if err != nil {
 		return nil, ckpterr.Wrap(ckpterr.RPC, "dial", err)
 	}

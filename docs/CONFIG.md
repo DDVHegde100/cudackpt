@@ -35,6 +35,7 @@ retry_backoff=500ms
 | `shim_poll` | `200ms` | Poll interval for `watch` and restore backoff base |
 | `max_retries` | `3` | Checkpoint retry attempts |
 | `retry_backoff` | `500ms` | Delay between checkpoint retries |
+| `rpc_secret` | empty | Shared secret for authenticated shim RPC (env override: `CUDACKPT_RPC_SECRET`) |
 
 ## Environment variables
 
@@ -47,6 +48,7 @@ retry_backoff=500ms
 | `CUDACKPT_SHIM_POLL` | `shim_poll` |
 | `CUDACKPT_MAX_RETRIES` | `max_retries` |
 | `CUDACKPT_RETRY_BACKOFF` | `retry_backoff` |
+| `CUDACKPT_RPC_SECRET` | `rpc_secret` (shim target process must also receive this env var) |
 
 Unknown keys and invalid values emit warnings to stderr when the config file is loaded.
 
@@ -67,7 +69,7 @@ These are read by `cudackpt agent` in addition to the shared config:
 | `CUDACKPT_AGENT_GC_MAX_AGE` | `336h` (14d) | Delete images older than this |
 | `CUDACKPT_PIN_FILE` | none | Paths exempt from GC |
 
-The systemd unit `cudackpt-agent.service` sets `EnvironmentFile=-/etc/cudackpt.conf` for process environment; the agent still parses the config file directly via `config.Load()`.
+The systemd unit `cudackpt-agent.service` sets core paths via `Environment=`; use `/etc/cudackpt.conf` for shared settings loaded by `config.Load()`.
 
 ## Debian package
 
