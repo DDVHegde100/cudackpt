@@ -9,7 +9,7 @@
 
 cudackpt intercepts the CUDA Driver API through an `LD_PRELOAD` shim, snapshots device memory and stream state, coordinates with [CRIU](https://criu.org/) for CPU/process state, and restores execution from a versioned on-disk image.
 
-> **Status:** v0.2.0 — early release. Validate on your stack before production use. See [Limitations](#limitations).
+> **Status:** v0.3.0 — early release. Validate on your stack before production use. See [Limitations](#limitations).
 
 ## Features
 

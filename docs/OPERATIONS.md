@@ -109,7 +109,7 @@ cudackpt resume <pid>
 Install from a release `.deb` or `make deb`:
 
 ```bash
-sudo dpkg -i cudackpt_0.2.0_amd64.deb
+sudo dpkg -i cudackpt_0.3.0_amd64.deb
 ```
 
 The package declares a dependency on **CRIU 3.x** and recommends an NVIDIA driver package; it does not install the CUDA toolkit.
