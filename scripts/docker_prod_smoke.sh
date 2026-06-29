@@ -13,6 +13,7 @@ docker run --rm --entrypoint /bin/sh "$TAG" -c '
   id cudackpt >/dev/null
   /usr/bin/cudackpt ps
   echo ps | /usr/bin/cudackpt serve
+  echo health | /usr/bin/cudackpt serve || true
   command -v criu >/dev/null
   criu --version >/dev/null
 '
