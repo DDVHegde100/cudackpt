@@ -85,7 +85,9 @@ func TestRunServeHealth(t *testing.T) {
 	if _, err := wIn.Write([]byte("health\n")); err != nil {
 		t.Fatal(err)
 	}
-	wIn.Close()
+	if err := wIn.Close(); err != nil {
+		t.Fatal(err)
+	}
 	defer func() { os.Stdin = oldIn }()
 
 	errCh := make(chan error, 1)
